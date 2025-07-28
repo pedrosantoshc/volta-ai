@@ -5,13 +5,14 @@ import { createClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { User } from '@supabase/supabase-js'
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const supabase = createClient()
@@ -30,7 +31,7 @@ export default function DashboardLayout({
     getUser()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (event: string, session: any) => {
         if (event === 'SIGNED_OUT' || !session) {
           router.push('/login')
         } else {

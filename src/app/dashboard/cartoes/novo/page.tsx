@@ -70,7 +70,7 @@ export default function NovoCartao() {
         is_active: true
       }
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('loyalty_cards')
         .insert(loyaltyCardData)
         .select()
@@ -81,7 +81,7 @@ export default function NovoCartao() {
       } else {
         router.push('/dashboard/cartoes')
       }
-    } catch (err) {
+    } catch {
       setError('Erro inesperado. Tente novamente.')
     } finally {
       setLoading(false)

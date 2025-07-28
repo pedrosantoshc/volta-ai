@@ -33,7 +33,7 @@ export default function Login() {
       } else {
         router.push('/dashboard')
       }
-    } catch (err) {
+    } catch {
       setError('Erro inesperado. Tente novamente.')
     } finally {
       setLoading(false)
@@ -53,7 +53,7 @@ export default function Login() {
         setError(error.message)
         setLoading(false)
       }
-    } catch (err) {
+    } catch {
       setError('Erro ao conectar com Google')
       setLoading(false)
     }

@@ -50,7 +50,7 @@ export default function Cadastro() {
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -67,7 +67,7 @@ export default function Cadastro() {
       } else {
         setSuccess(true)
       }
-    } catch (err) {
+    } catch {
       setError('Erro inesperado. Tente novamente.')
     } finally {
       setLoading(false)
@@ -87,7 +87,7 @@ export default function Cadastro() {
         setError(error.message)
         setLoading(false)
       }
-    } catch (err) {
+    } catch {
       setError('Erro ao conectar com Google')
       setLoading(false)
     }

@@ -6,6 +6,15 @@ import { Button } from "@/components/ui/button"
 import { createClient } from '@/lib/supabase-client'
 import Link from 'next/link'
 
+interface AIInsight {
+  id: string
+  type: string
+  title: string
+  description: string
+  recommended_action: string
+  priority: string
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState({
     totalCustomers: 0,
@@ -13,8 +22,8 @@ export default function Dashboard() {
     totalStamps: 0,
     campaignsSent: 0
   })
-  const [recentCustomers, setRecentCustomers] = useState([])
-  const [aiInsights, setAiInsights] = useState([])
+  // const [recentCustomers, setRecentCustomers] = useState([])
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
