@@ -499,8 +499,8 @@ export default function CustomerEnrollment() {
                 <div className="space-y-4">
                   <hr className="my-4" />
                   {customQuestions
-                    .sort((a, b) => a.order - b.order)
-                    .map((question) => (
+                    .sort((a: CustomQuestion, b: CustomQuestion) => a.order - b.order)
+                    .map((question: CustomQuestion) => (
                       <div key={question.id} className="space-y-2">
                         <Label htmlFor={question.id}>
                           {question.question} {question.required && '*'}

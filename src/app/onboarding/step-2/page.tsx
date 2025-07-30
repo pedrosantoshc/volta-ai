@@ -14,6 +14,7 @@ import Image from "next/image"
 interface BusinessData {
   id: string
   name: string
+  logo_url?: string
   settings: any
 }
 
@@ -142,7 +143,10 @@ export default function OnboardingStep2() {
 
       // Upload new logo if selected
       if (logoFile) {
-        logoUrl = await uploadLogo()
+        const uploadedUrl = await uploadLogo()
+        if (uploadedUrl) {
+          logoUrl = uploadedUrl
+        }
       }
 
       // Update business record
