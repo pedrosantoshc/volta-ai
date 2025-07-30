@@ -33,33 +33,8 @@ export default function Dashboard() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        // Get business info first
-        const { data: business } = await supabase
-          .from('businesses')
-          .select('id')
-          .eq('id', user.id)
-          .single()
-
-        if (!business) {
-          // Create business record if it doesn't exist
-          await supabase
-            .from('businesses')
-            .insert({
-              id: user.id,
-              name: user.user_metadata?.business_name || 'Meu Restaurante',
-              email: user.email,
-              phone: user.user_metadata?.phone || '',
-              address: '',
-              settings: {
-                ai_tone: 'friendly',
-                brand_voice: '',
-                auto_campaigns: true,
-                whatsapp_enabled: false,
-                apple_wallet_enabled: true,
-                google_pay_enabled: true
-              }
-            })
-        }
+        // If we reach here, business record should exist (enforced by layout)
+        // Just load the basic stats
 
         // Load stats (will be 0 for new businesses)
         setStats({

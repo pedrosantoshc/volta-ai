@@ -24,6 +24,26 @@ export default function DashboardLayout({
         router.push('/login')
       } else {
         setUser(user)
+        
+        // Check if user needs onboarding
+        try {
+          const { data: business } = await supabase
+            .from('businesses')
+            .select('settings')
+            .eq('id', user.id)
+            .single()
+
+          // If no business record exists or onboarding not completed, redirect to onboarding
+          if (!business || !business.settings?.onboarding_completed) {
+            router.push('/onboarding/step-1')
+            return
+          }
+        } catch (error) {
+          // If there's an error fetching business data, assume user needs onboarding
+          console.log('Business data not found, redirecting to onboarding')
+          router.push('/onboarding/step-1')
+          return
+        }
       }
       setLoading(false)
     }
