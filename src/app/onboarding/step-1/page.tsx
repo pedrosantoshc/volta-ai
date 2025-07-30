@@ -21,6 +21,13 @@ interface BusinessFormData {
   businessType: string
   cnpj: string
   description: string
+  baseline_metrics: {
+    monthly_customers: string
+    average_ticket: string
+    visit_frequency: string
+    retention_rate: string
+    marketing_spend: string
+  }
 }
 
 export default function OnboardingStep1() {
@@ -33,7 +40,14 @@ export default function OnboardingStep1() {
     address: '',
     businessType: '',
     cnpj: '',
-    description: ''
+    description: '',
+    baseline_metrics: {
+      monthly_customers: '',
+      average_ticket: '',
+      visit_frequency: '',
+      retention_rate: '',
+      marketing_spend: ''
+    }
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -80,6 +94,16 @@ export default function OnboardingStep1() {
     }))
   }
 
+  const handleBaselineMetricChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      baseline_metrics: {
+        ...prev.baseline_metrics,
+        [field]: value
+      }
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
@@ -102,6 +126,7 @@ export default function OnboardingStep1() {
             cnpj: formData.cnpj,
             description: formData.description,
             owner_name: formData.ownerName,
+            baseline_metrics: formData.baseline_metrics,
             onboarding_step: 1,
             onboarding_completed: false,
             ai_tone: null,
@@ -288,6 +313,88 @@ export default function OnboardingStep1() {
                   onChange={handleChange}
                   rows={3}
                 />
+              </div>
+
+              {/* Baseline KPI Metrics */}
+              <div className="space-y-6 border-t pt-6">
+                <div className="text-center">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">📊 Métricas do Negócio</h3>
+                  <p className="text-sm text-gray-600">
+                    Essas informações nos ajudarão a medir o sucesso do seu programa de fidelidade
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="monthly_customers">Clientes únicos por mês (aproximado)</Label>
+                    <Input
+                      id="monthly_customers"
+                      placeholder="Ex: 300"
+                      value={formData.baseline_metrics.monthly_customers}
+                      onChange={(e) => handleBaselineMetricChange('monthly_customers', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="average_ticket">Ticket médio por cliente (R$)</Label>
+                    <Input
+                      id="average_ticket"
+                      placeholder="Ex: 45"
+                      value={formData.baseline_metrics.average_ticket}
+                      onChange={(e) => handleBaselineMetricChange('average_ticket', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="visit_frequency">Frequência de retorno dos clientes</Label>
+                    <Select 
+                      value={formData.baseline_metrics.visit_frequency}
+                      onValueChange={(value) => handleBaselineMetricChange('visit_frequency', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a frequência" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="biweekly">Quinzenal</SelectItem>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="quarterly">Trimestral</SelectItem>
+                        <SelectItem value="rarely">Raramente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="retention_rate">Taxa de retenção estimada (%)</Label>
+                    <Input
+                      id="retention_rate"
+                      placeholder="Ex: 30"
+                      value={formData.baseline_metrics.retention_rate}
+                      onChange={(e) => handleBaselineMetricChange('retention_rate', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="marketing_spend">Gasto mensal com marketing (R$)</Label>
+                  <Input
+                    id="marketing_spend"
+                    placeholder="Ex: 500 (deixe em branco se não investe em marketing)"
+                    value={formData.baseline_metrics.marketing_spend}
+                    onChange={(e) => handleBaselineMetricChange('marketing_spend', e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Inclua gastos com redes sociais, panfletos, promoções, etc.
+                  </p>
+                </div>
+
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <p className="text-sm text-purple-800">
+                    💡 <strong>Por que coletamos essas informações?</strong><br />
+                    Essas métricas nos ajudarão a calcular o ROI (retorno sobre investimento) do seu programa de fidelidade,
+                    mostrando como ele impacta no crescimento do seu negócio.
+                  </p>
+                </div>
               </div>
 
               {error && (

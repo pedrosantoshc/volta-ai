@@ -93,6 +93,14 @@ interface BusinessSettings {
   whatsapp_enabled: boolean;
   apple_wallet_enabled: boolean;
   google_pay_enabled: boolean;
+  baseline_metrics?: {
+    monthly_customers: string; // Baseline: customers per month
+    average_ticket: string; // Baseline: average spend per customer (R$)
+    visit_frequency: string; // weekly | biweekly | monthly | quarterly | rarely
+    retention_rate: string; // Baseline: customer retention percentage
+    marketing_spend: string; // Baseline: monthly marketing investment (R$)
+    captured_date: string; // When baseline was captured for ROI calculations
+  };
 }
 
 interface LoyaltyCard {
@@ -490,17 +498,37 @@ Volte essa semana e ganhe 15% de desconto!"
    - Dynamic content personalization
    - A/B testing framework
 
-4. **Analytics & ROI Tracking**
-   - Advanced dashboard with key metrics
-   - Revenue attribution modeling
-   - Customer lifetime value calculations
-   - Predictive analytics implementation
+4. **Advanced Analytics & ROI Tracking**
+   - **Real-time ROI Dashboard**: Compare baseline metrics captured during onboarding with post-launch performance
+   - **Campaign Revenue Attribution**: Link WhatsApp campaigns directly to customer visits and revenue
+   - **Customer Lifetime Value (CLV)**: Calculate CLV with and without loyalty program participation
+   - **Baseline Comparison Reports**: Show improvement in monthly customers, average ticket, retention rate, and visit frequency
+   - **ROI Calculation Engine**: Automated formula: (Post-launch metrics - Baseline metrics) - Program Cost = Net ROI
+   - **Predictive Analytics**: Forecast customer churn, CLV, and optimal campaign timing
+   - **Loyalty vs Non-Loyalty Analysis**: Compare performance between loyalty program participants and regular customers
+   - **Marketing Spend Efficiency**: Track ROI per campaign and overall marketing spend optimization
+   - **Executive Summary Reports**: Monthly automated reports showing program impact on business growth
 
-6. **POS System Integration**
-   - Brazilian payment processor APIs
-   - Real-time purchase tracking
-   - Automatic stamp attribution
-   - Revenue correlation analysis
+5. **ROI Tracking Implementation Requirements**
+   - **Baseline Data Collection**: Capture business metrics during onboarding (monthly customers, average ticket, retention rate, visit frequency, marketing spend)
+   - **POS Integration Dependency**: Real revenue tracking requires integration with Brazilian payment processors (Stone, Cielo, GetNet, PagSeguro)
+   - **Manual Revenue Input**: Alternative for businesses without POS integration - manual revenue reporting interface
+   - **Campaign Attribution Model**: Link campaigns to customer visits using QR code scans and loyalty card usage
+   - **Performance Comparison Engine**: Compare pre-loyalty vs post-loyalty customer behavior patterns
+   - **Cost Tracking**: Track loyalty program operational costs (platform fees, WhatsApp messages, staff time)
+   - **ROI Dashboard Components**: 
+     - Baseline vs Current Performance charts
+     - Campaign ROI breakdown by type and audience
+     - Customer segment performance analysis
+     - Monthly/quarterly ROI summary reports
+   - **Integration Timeline**: ROI features dependent on Phase 2 POS integration completion
+
+6. **POS System Integration** (Required for Full ROI Tracking)
+   - **Brazilian Payment Processors**: Stone, Cielo, GetNet, PagSeguro API integration
+   - **Real-time Purchase Tracking**: Link transactions to loyalty card customers
+   - **Automatic Stamp Attribution**: Award points based on spend thresholds
+   - **Revenue Attribution**: Track which campaigns drive actual sales
+   - **Transaction Analysis**: Compare spending patterns of loyalty vs non-loyalty customers
 
 ### Phase 3: Backlog Implementation
 1. **Enterprise Features**
@@ -575,6 +603,8 @@ Volte essa semana e ganhe 15% de desconto!"
 - **Market Penetration:** 5% market share in target segments
 - **Customer Satisfaction:** 4.5+ rating, <5% monthly churn
 - **AI ROI:** 15:1 return on AI-generated campaigns
+- **ROI Tracking:** Demonstrate measurable business impact through baseline comparison
+- **POS Integration:** 50%+ of customers using integrated payment tracking
 
 ### Long-term Vision Goals
 - **Market Leadership:** #1 loyalty platform for Brazilian SMEs
