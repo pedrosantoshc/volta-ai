@@ -111,24 +111,37 @@ export default function OnboardingStep2() {
   const uploadLogo = async (): Promise<string | null> => {
     if (!logoFile || !user) return null
 
-    const fileExt = logoFile.name.split('.').pop()
-    const fileName = `${user.id}-logo-${Date.now()}.${fileExt}`
-    const filePath = `business-logos/${fileName}`
+    try {
+      const fileExt = logoFile.name.split('.').pop()
+      const fileName = `${user.id}-logo-${Date.now()}.${fileExt}`
+      const filePath = `business-logos/${fileName}`
 
-    const { error: uploadError } = await supabase.storage
-      .from('uploads')
-      .upload(filePath, logoFile)
+      console.log('Uploading logo:', filePath, 'File size:', logoFile.size)
 
-    if (uploadError) {
-      console.error('Logo upload error:', uploadError)
-      throw new Error('Erro ao fazer upload da logo')
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('uploads')
+        .upload(filePath, logoFile, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (uploadError) {
+        console.error('Logo upload error:', uploadError)
+        throw new Error(`Erro ao fazer upload da logo: ${uploadError.message}`)
+      }
+
+      console.log('Upload successful:', uploadData)
+
+      const { data } = supabase.storage
+        .from('uploads')
+        .getPublicUrl(filePath)
+
+      console.log('Public URL:', data.publicUrl)
+      return data.publicUrl
+    } catch (error) {
+      console.error('Upload error:', error)
+      throw error
     }
-
-    const { data } = supabase.storage
-      .from('uploads')
-      .getPublicUrl(filePath)
-
-    return data.publicUrl
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

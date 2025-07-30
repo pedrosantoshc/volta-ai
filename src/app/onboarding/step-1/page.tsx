@@ -82,11 +82,42 @@ export default function OnboardingStep1() {
     getUser()
   }, [router, supabase])
 
+  const formatPhone = (value: string) => {
+    // Remove all non-digits
+    const digits = value.replace(/\D/g, '')
+    
+    // Format as (XX) XXXXX-XXXX or (XX) XXXX-XXXX
+    if (digits.length <= 2) return digits
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`
+  }
+
+  const formatCNPJ = (value: string) => {
+    // Remove all non-digits
+    const digits = value.replace(/\D/g, '')
+    
+    // Format as XX.XXX.XXX/XXXX-XX
+    if (digits.length <= 2) return digits
+    if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`
+    if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`
+    if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
+    
+    let formattedValue = value
+    if (name === 'phone') {
+      formattedValue = formatPhone(value)
+    } else if (name === 'cnpj') {
+      formattedValue = formatCNPJ(value)
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: formattedValue
     }))
   }
 
@@ -107,9 +138,87 @@ export default function OnboardingStep1() {
     }))
   }
 
+  const validateForm = () => {
+    // Basic validation
+    if (!formData.name.trim()) {
+      setError('Nome do restaurante é obrigatório.')
+      return false
+    }
+    
+    if (!formData.ownerName.trim()) {
+      setError('Nome do proprietário é obrigatório.')
+      return false
+    }
+
+    if (!formData.email.trim()) {
+      setError('Email é obrigatório.')
+      return false
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setError('Por favor, insira um email válido.')
+      return false
+    }
+
+    if (!formData.phone.trim()) {
+      setError('Telefone é obrigatório.')
+      return false
+    }
+
+    // Brazilian phone validation (11 digits: 11999999999 or formatted)
+    const phoneDigits = formData.phone.replace(/\D/g, '')
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      setError('Telefone deve ter 10 ou 11 dígitos.')
+      return false
+    }
+
+    // Basic phone format check - validate area code
+    const validAreaCodes = ['11', '12', '13', '14', '15', '16', '17', '18', '19', '21', '22', '24', '27', '28', '31', '32', '33', '34', '35', '37', '38', '41', '42', '43', '44', '45', '46', '47', '48', '49', '51', '53', '54', '55', '61', '62', '64', '63', '65', '66', '67', '68', '69', '71', '73', '74', '75', '77', '79', '81', '87', '82', '83', '84', '85', '88', '89', '86', '91', '93', '94', '95', '96', '97', '98', '99']
+    const areaCode = phoneDigits.substring(0, 2)
+    if (!validAreaCodes.includes(areaCode)) {
+      setError('Código de área do telefone inválido.')
+      return false
+    }
+
+    // CNPJ validation (optional but if provided, must be valid)
+    if (formData.cnpj.trim()) {
+      const cnpjDigits = formData.cnpj.replace(/\D/g, '')
+      if (cnpjDigits.length !== 14) {
+        setError('CNPJ deve ter 14 dígitos.')
+        return false
+      }
+      
+      // Basic CNPJ format validation (this is a simplified check)
+      // In production, you would use a proper CNPJ validation library
+      if (!/^\d{14}$/.test(cnpjDigits)) {
+        setError('CNPJ inválido.')
+        return false
+      }
+    }
+
+    if (!formData.address.trim()) {
+      setError('Endereço é obrigatório.')
+      return false
+    }
+
+    if (!formData.businessType) {
+      setError('Tipo de negócio é obrigatório.')
+      return false
+    }
+
+    return true
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
+
+    if (!validateForm()) {
+      setLoading(false)
+      return
+    }
 
     setLoading(true)
     setError('')
@@ -321,7 +430,12 @@ export default function OnboardingStep1() {
               {/* Baseline KPI Metrics */}
               <div className="space-y-6 border-t pt-6">
                 <div className="text-center">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">📊 Métricas do Negócio</h3>
+                  <div className="flex items-center justify-center space-x-2 mb-2">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <h3 className="text-lg font-medium text-gray-900">Métricas do Negócio</h3>
+                  </div>
                   <p className="text-sm text-gray-600">
                     Essas informações nos ajudarão a medir o sucesso do seu programa de fidelidade
                   </p>
