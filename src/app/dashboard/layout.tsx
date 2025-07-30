@@ -26,21 +26,30 @@ export default function DashboardLayout({
         setUser(user)
         
         // Check if user needs onboarding
+        console.log('Dashboard Layout: Checking onboarding status for user:', user.id)
         try {
-          const { data: business } = await supabase
+          const { data: business, error: businessError } = await supabase
             .from('businesses')
             .select('settings')
             .eq('id', user.id)
             .single()
 
+          console.log('Dashboard Layout: Business data:', business)
+          console.log('Dashboard Layout: Business error:', businessError)
+          
           // If no business record exists or onboarding not completed, redirect to onboarding
           if (!business || !business.settings?.onboarding_completed) {
+            console.log('Dashboard Layout: Redirecting to onboarding - no business or onboarding not completed')
+            console.log('Dashboard Layout: business exists:', !!business)
+            console.log('Dashboard Layout: onboarding_completed:', business?.settings?.onboarding_completed)
             router.push('/onboarding/step-1')
             return
           }
+          
+          console.log('Dashboard Layout: User has completed onboarding, allowing dashboard access')
         } catch (error) {
           // If there's an error fetching business data, assume user needs onboarding
-          console.log('Business data not found, redirecting to onboarding')
+          console.log('Dashboard Layout: Error fetching business data, redirecting to onboarding:', error)
           router.push('/onboarding/step-1')
           return
         }

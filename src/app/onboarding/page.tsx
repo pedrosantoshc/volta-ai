@@ -22,18 +22,24 @@ export default function OnboardingStart() {
 
       // If user is already authenticated, check if they've completed onboarding
       if (user) {
+        console.log('Onboarding Page: Checking business status for user:', user.id)
         // Check if business profile exists
-        const { data: business } = await supabase
+        const { data: business, error: businessError } = await supabase
           .from('businesses')
           .select('*')
           .eq('id', user.id)
           .single()
 
-        if (business) {
-          // Business already exists, redirect to dashboard
+        console.log('Onboarding Page: Business data:', business)
+        console.log('Onboarding Page: Business error:', businessError)
+
+        if (business && business.settings?.onboarding_completed) {
+          console.log('Onboarding Page: Business exists and onboarding completed, redirecting to dashboard')
+          // Business exists and onboarding is completed, redirect to dashboard
           router.push('/dashboard')
         } else {
-          // Start onboarding process
+          console.log('Onboarding Page: No business or onboarding not completed, redirecting to step-1')
+          // Either no business exists or onboarding not completed, start/continue onboarding
           router.push('/onboarding/step-1')
         }
       }

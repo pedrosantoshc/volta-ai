@@ -56,10 +56,13 @@ export default function OnboardingStep1() {
 
   useEffect(() => {
     const getUser = async () => {
+      console.log('Onboarding Step 1: Component mounted')
       const { data: { user } } = await supabase.auth.getUser()
+      console.log('Onboarding Step 1: User data:', user)
       setUser(user)
       
       if (!user) {
+        console.log('Onboarding Step 1: No user found, redirecting to login')
         router.push('/login')
         return
       }
