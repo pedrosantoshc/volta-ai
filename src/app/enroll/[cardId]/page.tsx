@@ -34,10 +34,12 @@ interface Business {
 interface CustomQuestion {
   id: string
   question: string
-  type: 'text' | 'select' | 'multiselect' | 'date' | 'phone'
+  type: 'text' | 'textarea' | 'select' | 'multiselect' | 'date' | 'phone' | 'email' | 'number'
   options?: string[]
   required: boolean
   order: number
+  placeholder?: string
+  description?: string
 }
 
 interface FormData {
@@ -215,7 +217,7 @@ export default function CustomerEnrollment() {
 
       if (existingCustomer) {
         // Update existing customer
-        const { data: updatedCustomer, error: updateError } = await supabase
+        const { error: updateError } = await supabase
           .from('customers')
           .update({
             name: formData.name,
