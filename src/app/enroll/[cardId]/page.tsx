@@ -187,7 +187,6 @@ export default function CustomerEnrollment() {
     }
 
     // Custom questions validation
-    const customQuestions = loyaltyCard?.enrollment_form?.custom_questions || []
     for (const question of customQuestions) {
       if (question.required && !formData.custom_fields[question.id]) {
         setError(`O campo "${question.question}" é obrigatório.`)
@@ -396,8 +395,6 @@ export default function CustomerEnrollment() {
   if (!loyaltyCard || !business) {
     return null
   }
-
-  const customQuestions = loyaltyCard.enrollment_form?.custom_questions || []
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 py-8">
