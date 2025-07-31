@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { createClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import QRCode from 'qrcode'
 
 interface LoyaltyCard {
   id: string
@@ -33,6 +35,8 @@ export default function CartoesFidelidade() {
   const [loyaltyCards, setLoyaltyCards] = useState<LoyaltyCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [qrCodeUrl, setQrCodeUrl] = useState('')
+  const [selectedCard, setSelectedCard] = useState<LoyaltyCard | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -91,6 +95,24 @@ export default function CartoesFidelidade() {
 
     loadLoyaltyCards()
   }, [router, supabase])
+
+  const generateQRCode = async (card: LoyaltyCard) => {
+    try {
+      const enrollUrl = `${window.location.origin}/enroll/${card.id}`
+      const qrDataUrl = await QRCode.toDataURL(enrollUrl, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#7c3aed',
+          light: '#ffffff'
+        }
+      })
+      setQrCodeUrl(qrDataUrl)
+      setSelectedCard(card)
+    } catch (err) {
+      console.error('Error generating QR code:', err)
+    }
+  }
 
   const handleToggleActive = async (cardId: string, currentActive: boolean) => {
     try {
@@ -281,14 +303,78 @@ export default function CartoesFidelidade() {
                   </Button>
                 </div>
 
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="w-full"
-                  disabled
-                >
-                  Ver Detalhes
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      const enrollUrl = `${window.location.origin}/enroll/${card.id}`
+                      navigator.clipboard.writeText(enrollUrl)
+                      alert('Link copiado!')
+                    }}
+                  >
+                    📋 Copiar Link
+                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => generateQRCode(card)}
+                      >
+                        📱 QR Code
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>QR Code - {selectedCard?.name}</DialogTitle>
+                      </DialogHeader>
+                      <div className="flex flex-col items-center space-y-4">
+                        {qrCodeUrl && (
+                          <img 
+                            src={qrCodeUrl} 
+                            alt="QR Code para inscrição" 
+                            className="border rounded-lg"
+                          />
+                        )}
+                        <p className="text-sm text-gray-600 text-center">
+                          Clientes podem escanear este QR code para se inscrever no programa de fidelidade
+                        </p>
+                        <div className="flex gap-2 w-full">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              const enrollUrl = `${window.location.origin}/enroll/${selectedCard?.id}`
+                              navigator.clipboard.writeText(enrollUrl)
+                              alert('Link copiado!')
+                            }}
+                          >
+                            📋 Copiar Link
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              if (qrCodeUrl) {
+                                const link = document.createElement('a')
+                                link.download = `qr-code-${selectedCard?.name}.png`
+                                link.href = qrCodeUrl
+                                link.click()
+                              }
+                            }}
+                          >
+                            💾 Baixar QR
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </CardContent>
             </Card>
           ))}
