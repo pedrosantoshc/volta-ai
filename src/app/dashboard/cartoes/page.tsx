@@ -52,7 +52,7 @@ export default function CartoesFidelidade() {
             *,
             customer_loyalty_cards (
               id,
-              stamps_earned
+              current_stamps
             )
           `)
           .eq('business_id', user.id)
@@ -60,14 +60,17 @@ export default function CartoesFidelidade() {
 
         if (cardsError) {
           console.error('Error loading loyalty cards:', cardsError)
-          setError('Erro ao carregar cartões de fidelidade.')
+          // Don't show error for empty results, only for actual errors
+          if (cardsError.code !== 'PGRST116') {
+            setError('Erro ao carregar cartões de fidelidade.')
+          }
           return
         }
 
         // Process cards with customer statistics
         const processedCards = cards?.map((card: any) => {
           const customerCards = card.customer_loyalty_cards || []
-          const totalStamps = customerCards.reduce((sum: number, cc: any) => sum + (cc.stamps_earned || 0), 0)
+          const totalStamps = customerCards.reduce((sum: number, cc: any) => sum + (cc.current_stamps || 0), 0)
           
           return {
             ...card,
@@ -77,6 +80,7 @@ export default function CartoesFidelidade() {
         }) || []
 
         setLoyaltyCards(processedCards)
+        setError('') // Clear any previous errors
       } catch (err) {
         console.error('Unexpected error:', err)
         setError('Erro inesperado ao carregar dados.')
