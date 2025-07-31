@@ -65,7 +65,7 @@ export default function CartoesFidelidade() {
         }
 
         // Process cards with customer statistics
-        const processedCards = cards?.map(card => {
+        const processedCards = cards?.map((card: any) => {
           const customerCards = card.customer_loyalty_cards || []
           const totalStamps = customerCards.reduce((sum: number, cc: any) => sum + (cc.stamps_earned || 0), 0)
           
