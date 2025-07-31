@@ -99,6 +99,8 @@ export default function CartoesFidelidade() {
   const generateQRCode = async (card: LoyaltyCard) => {
     try {
       const enrollUrl = `${window.location.origin}/enroll/${card.id}`
+      console.log('Generated QR URL:', enrollUrl)
+      console.log('Card ID:', card.id)
       const qrDataUrl = await QRCode.toDataURL(enrollUrl, {
         width: 300,
         margin: 2,

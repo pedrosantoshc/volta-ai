@@ -83,6 +83,8 @@ export default function CustomerEnrollment() {
   useEffect(() => {
     const loadEnrollmentData = async () => {
       try {
+        console.log('Looking for card ID:', cardId)
+        
         // Get loyalty card data with business info
         const { data: cardData, error: cardError } = await supabase
           .from('loyalty_cards')
@@ -91,11 +93,19 @@ export default function CustomerEnrollment() {
             businesses (*)
           `)
           .eq('id', cardId)
-          .eq('is_active', true)
           .single()
 
+        console.log('Card query result:', { cardData, cardError })
+
         if (cardError || !cardData) {
-          setError('Cartão de fidelidade não encontrado ou inativo.')
+          console.error('Card lookup error:', cardError)
+          setError('Cartão de fidelidade não encontrado.')
+          setLoading(false)
+          return
+        }
+
+        if (!cardData.is_active) {
+          setError('Este cartão de fidelidade está inativo.')
           setLoading(false)
           return
         }
