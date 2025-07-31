@@ -119,7 +119,7 @@ export default function OnboardingStep2() {
       console.log('Uploading logo:', filePath, 'File size:', logoFile.size)
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('uploads')
+        .from('logo-uploads')
         .upload(filePath, logoFile, {
           cacheControl: '3600',
           upsert: false
@@ -133,7 +133,7 @@ export default function OnboardingStep2() {
       console.log('Upload successful:', uploadData)
 
       const { data } = supabase.storage
-        .from('uploads')
+        .from('logo-uploads')
         .getPublicUrl(filePath)
 
       console.log('Public URL:', data.publicUrl)
