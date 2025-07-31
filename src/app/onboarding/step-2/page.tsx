@@ -127,7 +127,17 @@ export default function OnboardingStep2() {
 
       if (uploadError) {
         console.error('Logo upload error:', uploadError)
-        throw new Error(`Erro ao fazer upload da logo: ${uploadError.message}`)
+        
+        // Provide specific error messages based on error type
+        if (uploadError.message?.includes('row-level security') || uploadError.message?.includes('RLS')) {
+          throw new Error('Erro de permissão: O bucket de upload não está configurado corretamente. Entre em contato com o suporte.')
+        } else if (uploadError.message?.includes('Bucket not found')) {
+          throw new Error('Erro de configuração: Bucket de upload não encontrado. Entre em contato com o suporte.')
+        } else if (uploadError.message?.includes('File size')) {
+          throw new Error('Arquivo muito grande. O tamanho máximo é 5MB.')
+        } else {
+          throw new Error(`Erro ao fazer upload da logo: ${uploadError.message}`)
+        }
       }
 
       console.log('Upload successful:', uploadData)
@@ -192,8 +202,33 @@ export default function OnboardingStep2() {
     }
   }
 
-  const handleSkip = () => {
-    router.push('/onboarding/step-3')
+  const handleSkip = async () => {
+    if (!user || !business) return
+
+    try {
+      // Update business record to mark step 2 as completed even when skipped
+      const { error: updateError } = await supabase
+        .from('businesses')
+        .update({
+          settings: {
+            ...business.settings,
+            onboarding_step: 2
+          }
+        })
+        .eq('id', user.id)
+
+      if (updateError) {
+        console.error('Business update error:', updateError)
+        setError('Erro ao pular etapa. Tente novamente.')
+        return
+      }
+
+      // Proceed to step 3
+      router.push('/onboarding/step-3')
+    } catch (err) {
+      console.error('Unexpected error:', err)
+      setError('Erro inesperado. Tente novamente.')
+    }
   }
 
   if (!user || !business) {

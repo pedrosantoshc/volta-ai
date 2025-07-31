@@ -77,6 +77,9 @@ export default function CustomerEnrollment() {
     }
   })
 
+  // Extract custom questions from loyalty card
+  const customQuestions: CustomQuestion[] = loyaltyCard?.enrollment_form?.custom_questions || []
+
   useEffect(() => {
     const loadEnrollmentData = async () => {
       try {
@@ -505,13 +508,28 @@ export default function CustomerEnrollment() {
                         <Label htmlFor={question.id}>
                           {question.question} {question.required && '*'}
                         </Label>
+                        {question.description && (
+                          <p className="text-sm text-gray-500">{question.description}</p>
+                        )}
                         
                         {question.type === 'text' && (
                           <Input
                             id={question.id}
                             value={formData.custom_fields[question.id] || ''}
                             onChange={(e) => handleInputChange(`custom_fields.${question.id}`, e.target.value)}
+                            placeholder={question.placeholder || ''}
                             required={question.required}
+                          />
+                        )}
+                        
+                        {question.type === 'textarea' && (
+                          <Textarea
+                            id={question.id}
+                            value={formData.custom_fields[question.id] || ''}
+                            onChange={(e) => handleInputChange(`custom_fields.${question.id}`, e.target.value)}
+                            placeholder={question.placeholder || ''}
+                            required={question.required}
+                            rows={3}
                           />
                         )}
                         
@@ -522,7 +540,7 @@ export default function CustomerEnrollment() {
                             required={question.required}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecione uma opção" />
+                              <SelectValue placeholder={question.placeholder || "Selecione uma opção"} />
                             </SelectTrigger>
                             <SelectContent>
                               {question.options?.map((option, index) => (
@@ -532,6 +550,40 @@ export default function CustomerEnrollment() {
                               ))}
                             </SelectContent>
                           </Select>
+                        )}
+                        
+                        {question.type === 'multiselect' && (
+                          <div className="space-y-2">
+                            {question.options?.map((option, index) => (
+                              <div key={index} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`${question.id}_${index}`}
+                                  checked={(formData.custom_fields[question.id] || []).includes(option)}
+                                  onCheckedChange={(checked) => {
+                                    const currentValues = formData.custom_fields[question.id] || []
+                                    const newValues = checked 
+                                      ? [...currentValues, option]
+                                      : currentValues.filter((v: string) => v !== option)
+                                    handleInputChange(`custom_fields.${question.id}`, newValues)
+                                  }}
+                                />
+                                <Label htmlFor={`${question.id}_${index}`} className="text-sm">
+                                  {option}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {(question.type === 'date' || question.type === 'email' || question.type === 'phone' || question.type === 'number') && (
+                          <Input
+                            id={question.id}
+                            type={question.type === 'date' ? 'date' : question.type === 'email' ? 'email' : question.type === 'number' ? 'number' : 'tel'}
+                            value={formData.custom_fields[question.id] || ''}
+                            onChange={(e) => handleInputChange(`custom_fields.${question.id}`, e.target.value)}
+                            placeholder={question.placeholder || ''}
+                            required={question.required}
+                          />
                         )}
                       </div>
                     ))}

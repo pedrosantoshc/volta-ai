@@ -269,9 +269,11 @@ export default function CartoesFidelidade() {
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    disabled
+                    asChild
                   >
-                    Editar
+                    <Link href={`/dashboard/cartoes/${card.id}/formulario`}>
+                      Formulário
+                    </Link>
                   </Button>
                 </div>
 

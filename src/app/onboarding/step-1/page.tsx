@@ -224,10 +224,10 @@ export default function OnboardingStep1() {
     setError('')
 
     try {
-      // Create business record
+      // Create or update business record using upsert
       const { error: businessError } = await supabase
         .from('businesses')
-        .insert({
+        .upsert({
           id: user.id, // Use auth user ID as business ID
           name: formData.name,
           email: formData.email,
@@ -251,8 +251,14 @@ export default function OnboardingStep1() {
         })
 
       if (businessError) {
-        console.error('Business creation error:', businessError)
-        setError('Erro ao salvar informações do negócio. Tente novamente.')
+        console.error('Business creation/update error:', businessError)
+        
+        // Handle specific constraint error
+        if (businessError.code === '23505' && businessError.message?.includes('businesses_email_key')) {
+          setError('Este email já está sendo usado por outro negócio. Por favor, use um email diferente.')
+        } else {
+          setError('Erro ao salvar informações do negócio. Tente novamente.')
+        }
         return
       }
 
