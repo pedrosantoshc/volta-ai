@@ -2,7 +2,7 @@ import OpenAI from 'openai'
 
 // DeepSeek API client configuration
 const deepseek = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY,
+  apiKey: process.env.DEEPSEEK_API_KEY || 'sk-placeholder-key-for-build',
   baseURL: 'https://api.deepseek.com/v1',
 })
 
@@ -44,6 +44,13 @@ export async function generateCustomerInsights(
   recentTransactions: any[],
   businessContext: BusinessContext
 ): Promise<CustomerInsight[]> {
+  // Check if API key is available at runtime
+  if (!process.env.DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY === 'sk-placeholder-key-for-build') {
+    console.warn('DeepSeek API key not available, using fallback insights')
+    const customerAnalysis = analyzeCustomerData(customers)
+    return generateFallbackInsights(customerAnalysis, businessContext)
+  }
+
   try {
     // Analyze customer data to create insights
     const customerAnalysis = analyzeCustomerData(customers)
@@ -151,6 +158,16 @@ export async function generateCampaignContent(
   imagePrompt?: string
   expectedResults: string
 }> {
+  // Check if API key is available at runtime
+  if (!process.env.DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY === 'sk-placeholder-key-for-build') {
+    console.warn('DeepSeek API key not available, using fallback campaign content')
+    return {
+      title: `Campanha ${campaignType}`,
+      message: `Olá! Temos uma oferta especial para você no ${businessContext.businessName} 😊 Venha nos visitar!`,
+      expectedResults: 'Engajamento estimado de 20-25%'
+    }
+  }
+
   try {
     const prompt = customPrompt || `
 Crie uma campanha de WhatsApp para ${businessContext.businessName} (${businessContext.businessType}).
