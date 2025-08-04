@@ -2,12 +2,14 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from './supabase'
 
-export const createClient = async () => {
+export const createClient = async (useServiceRole = false) => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseKey = useServiceRole 
+    ? process.env.SUPABASE_SERVICE_ROLE_KEY 
+    : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   // Return a mock client if environment variables are not set (for build time)
-  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'your_supabase_url_here') {
+  if (!supabaseUrl || !supabaseKey || supabaseUrl === 'your_supabase_url_here') {
     return {
       auth: {
         getUser: () => Promise.resolve({ data: { user: null } })
@@ -21,7 +23,7 @@ export const createClient = async () => {
 
   const cookieStore = await cookies()
 
-  return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+  return createServerClient<Database>(supabaseUrl, supabaseKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll()

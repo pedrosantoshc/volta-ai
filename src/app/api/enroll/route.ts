@@ -12,7 +12,10 @@ export async function POST(request: NextRequest) {
       consent
     } = await request.json()
 
+    console.log('Enrollment request received:', { cardId, name, phone: phone?.substring(0, 5) + 'XXX' })
+
     if (!cardId || !name || !phone) {
+      console.error('Missing required fields:', { cardId: !!cardId, name: !!name, phone: !!phone })
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -20,7 +23,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Create server-side Supabase client with service role for elevated permissions
-    const supabase = await createClient()
+    // Try service role first, fallback to anon key if not available
+    const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY
+    const supabase = await createClient(hasServiceRole)
+    
+    console.log('Supabase client created successfully', { useServiceRole: hasServiceRole })
 
     // Get loyalty card and business info
     const { data: loyaltyCard, error: cardError } = await supabase
@@ -38,6 +45,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (cardError || !loyaltyCard) {
+      console.error('Loyalty card error:', cardError)
       return NextResponse.json(
         { error: 'Loyalty card not found' },
         { status: 404 }
@@ -45,14 +53,19 @@ export async function POST(request: NextRequest) {
     }
 
     const business = loyaltyCard.businesses
+    console.log('Business found:', business?.name)
 
     // Check if customer already exists (by phone and business)  
-    const { data: existingCustomer } = await supabase
+    const { data: existingCustomer, error: customerCheckError } = await supabase
       .from('customers')
       .select('*')
       .eq('business_id', business.id)
       .eq('phone', phone)
       .single()
+
+    if (customerCheckError && customerCheckError.code !== 'PGRST116') {
+      console.error('Error checking existing customer:', customerCheckError)
+    }
 
     let customerId: string
 
@@ -103,12 +116,20 @@ export async function POST(request: NextRequest) {
 
       if (createError) {
         console.error('Customer creation error:', createError)
+        console.error('Customer creation data:', {
+          business_id: business.id,
+          name,
+          phone,
+          email: email || null,
+          customFields: customFields || {},
+        })
         return NextResponse.json(
-          { error: 'Failed to create customer' },
+          { error: `Failed to create customer: ${createError.message}`, details: createError },
           { status: 500 }
         )
       }
 
+      console.log('Customer created successfully:', newCustomer.id)
       customerId = newCustomer.id
     }
 
