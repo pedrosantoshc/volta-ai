@@ -127,6 +127,12 @@ export default function DashboardLayout({
                 Cartões
               </Link>
               <Link 
+                href="/dashboard/selos" 
+                className="text-gray-600 hover:text-purple-600 px-3 py-2 text-sm font-medium"
+              >
+                Selos
+              </Link>
+              <Link 
                 href="/dashboard/campanhas" 
                 className="text-gray-600 hover:text-purple-600 px-3 py-2 text-sm font-medium"
               >

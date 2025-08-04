@@ -445,18 +445,63 @@ export default function CustomerEnrollment() {
             <div 
               className="w-full max-w-xs mx-auto rounded-lg p-4 text-white shadow-lg mt-4"
               style={{
-                background: business.settings?.primary_color 
-                  ? `linear-gradient(135deg, ${business.settings.primary_color} 0%, ${business.settings.secondary_color || business.settings.primary_color} 100%)`
-                  : 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)'
+                background: loyaltyCard.design?.background_color 
+                  ? loyaltyCard.design.background_color
+                  : business.settings?.primary_color 
+                    ? `linear-gradient(135deg, ${business.settings.primary_color} 0%, ${business.settings.secondary_color || business.settings.primary_color} 100%)`
+                    : 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)'
               }}
             >
-              <div className="flex justify-between items-center text-sm">
-                <span>Colete: {loyaltyCard.rules?.stamps_required || 10} selos</span>
-                <span>{"○".repeat(loyaltyCard.rules?.stamps_required || 10)}</span>
+              {/* Business Logo and Header */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  {business.logo_url ? (
+                    <div className="w-8 h-8 rounded-md overflow-hidden bg-white/20 flex items-center justify-center">
+                      <Image
+                        src={business.logo_url}
+                        alt={business.name}
+                        width={24}
+                        height={24}
+                        className="object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">{business.name[0]}</span>
+                    </div>
+                  )}
+                  <span className="text-sm font-medium">{loyaltyCard.design?.header_text || business.name}</span>
+                </div>
               </div>
-              <div className="text-center mt-2 text-sm">
-                <strong>Recompensa: {loyaltyCard.rules?.reward_description || "Brinde especial"}</strong>
+              
+              {/* Stamp Collection Area */}
+              <div className="text-center mb-3">
+                <div className="text-xs mb-2 opacity-90">
+                  Colete: {loyaltyCard.rules?.stamps_required || 10} selos
+                </div>
+                <div className="flex justify-center space-x-1 mb-2">
+                  {Array.from({ length: Math.min(loyaltyCard.rules?.stamps_required || 10, 10) }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-6 h-6 rounded-full border border-white/60 flex items-center justify-center text-xs bg-white/10"
+                    >
+                      {i < 0 ? (loyaltyCard.design?.stamp_icon === 'coffee' ? '☕' : loyaltyCard.design?.stamp_icon === 'pizza' ? '🍕' : '⭐') : ''}
+                    </div>
+                  ))}
+                </div>
               </div>
+              
+              {/* Reward Description */}
+              <div className="text-center text-xs font-medium bg-white/20 rounded-md py-2 px-3">
+                <strong>🎁 {loyaltyCard.rules?.reward_description || "Brinde especial"}</strong>
+              </div>
+              
+              {/* Footer */}
+              {loyaltyCard.design?.footer_text && (
+                <div className="text-center text-xs mt-2 opacity-75">
+                  {loyaltyCard.design.footer_text}
+                </div>
+              )}
             </div>
           </CardHeader>
           

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { createClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import QRCode from 'qrcode'
 
 interface LoyaltyCard {
@@ -29,6 +30,11 @@ interface LoyaltyCard {
   created_at: string
   customer_count?: number
   total_stamps?: number
+  businesses?: {
+    id: string
+    name: string
+    logo_url?: string
+  }
 }
 
 export default function CartoesFidelidade() {
@@ -49,7 +55,7 @@ export default function CartoesFidelidade() {
           return
         }
 
-        // Load loyalty cards with customer counts
+        // Load loyalty cards with customer counts and business info
         const { data: cards, error: cardsError } = await supabase
           .from('loyalty_cards')
           .select(`
@@ -57,6 +63,11 @@ export default function CartoesFidelidade() {
             customer_loyalty_cards (
               id,
               current_stamps
+            ),
+            businesses (
+              id,
+              name,
+              logo_url
             )
           `)
           .eq('business_id', user.id)
@@ -247,15 +258,39 @@ export default function CartoesFidelidade() {
               <CardContent className="space-y-4">
                 {/* Card Preview */}
                 <div 
-                  className="rounded-lg p-4 text-white text-center"
+                  className="rounded-lg p-4 text-white"
                   style={{ 
                     backgroundColor: card.design?.background_color || '#7c3aed',
                     minHeight: '120px'
                   }}
                 >
-                  <div className="text-sm font-medium mb-2">
-                    {card.design?.header_text || card.name}
+                  {/* Header with Logo */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      {card.businesses?.logo_url ? (
+                        <div className="w-6 h-6 rounded-sm overflow-hidden bg-white/20 flex items-center justify-center">
+                          <Image
+                            src={card.businesses.logo_url}
+                            alt={card.businesses.name || 'Logo'}
+                            width={20}
+                            height={20}
+                            className="object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-6 h-6 rounded-sm bg-white/20 flex items-center justify-center">
+                          <span className="text-white font-bold text-xs">
+                            {(card.businesses?.name || card.name)[0]}
+                          </span>
+                        </div>
+                      )}
+                      <span className="text-xs font-medium truncate">
+                        {card.design?.header_text || card.name}
+                      </span>
+                    </div>
                   </div>
+                  
+                  {/* Stamps */}
                   <div className="flex justify-center space-x-1 mb-2">
                     {Array.from({ length: Math.min(card.rules?.stamps_required || 10, 10) }).map((_, i) => (
                       <div
@@ -266,7 +301,9 @@ export default function CartoesFidelidade() {
                       </div>
                     ))}
                   </div>
-                  <div className="text-xs opacity-90">
+                  
+                  {/* Reward */}
+                  <div className="text-center text-xs bg-white/20 rounded-md py-1 px-2">
                     {card.rules?.reward_description || 'Recompensa'}
                   </div>
                 </div>
