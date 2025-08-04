@@ -46,7 +46,7 @@ export async function generateCustomerInsights(
 ): Promise<CustomerInsight[]> {
   try {
     // Analyze customer data to create insights
-    const customerAnalysis = analyzeCustomerData(customers, recentTransactions)
+    const customerAnalysis = analyzeCustomerData(customers)
     
     const prompt = `
 Você é um especialista em marketing de fidelidade para restaurantes brasileiros. Analise os dados abaixo e forneça insights acionáveis em português brasileiro.
@@ -134,7 +134,7 @@ Foque em insights que geram ROI mensurável. Use linguagem brasileira natural e 
   } catch (error) {
     console.error('DeepSeek API error:', error)
     // Return fallback insights based on data analysis
-    const customerAnalysis = analyzeCustomerData(customers, recentTransactions)
+    const customerAnalysis = analyzeCustomerData(customers)
     return generateFallbackInsights(customerAnalysis, businessContext)
   }
 }
@@ -225,7 +225,7 @@ Retorne JSON com:
 }
 
 // Analyze customer data to extract patterns
-function analyzeCustomerData(customers: any[], recentTransactions: any[]) {
+function analyzeCustomerData(customers: any[]) {
   const now = new Date()
   const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000)
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)

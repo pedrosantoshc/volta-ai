@@ -67,13 +67,13 @@ export default function OnboardingStep4() {
       setBusiness(businessData)
 
       // Load existing team members if any
-      loadTeamMembers(user.id)
+      loadTeamMembers()
     }
 
     getUser()
   }, [router, supabase])
 
-  const loadTeamMembers = async (businessId: string) => {
+  const loadTeamMembers = async () => {
     // For now, we'll use a simple array. In production, this would come from a team_members table
     // Since we don't have team management in the current schema, we'll simulate it
     const existingTeam = business?.settings?.team_members || []

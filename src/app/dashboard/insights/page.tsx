@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from '@/lib/supabase-client'
@@ -138,11 +138,11 @@ export default function InsightsPage() {
         totalCards: totalCards || 0,
         recentActivity: {
           stampsThisWeek: recentTransactions?.length || 0,
-          newCustomersThisWeek: recentTransactions?.filter(t => 
+          newCustomersThisWeek: recentTransactions?.filter((t: any) => 
             t.customer_loyalty_cards?.customer?.enrollment_date &&
             new Date(t.customer_loyalty_cards.customer.enrollment_date) >= oneWeekAgo
           ).length || 0,
-          completedCardsThisWeek: customers?.filter(c =>
+          completedCardsThisWeek: customers?.filter((c: any) =>
             c.customer_loyalty_cards?.some((card: any) => card.status === 'completed')
           ).length || 0
         }
@@ -472,7 +472,7 @@ export default function InsightsPage() {
                     <div className="bg-gray-50 p-3 rounded-lg space-y-2">
                       <p className="font-medium text-sm">{insight.campaignSuggestion.title}</p>
                       <p className="text-sm text-gray-700 bg-white p-2 rounded border">
-                        "{insight.campaignSuggestion.message}"
+                        &quot;{insight.campaignSuggestion.message}&quot;
                       </p>
                       <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
                         <div>

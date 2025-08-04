@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { MessageSquare, Plus, Search, Filter, TrendingUp, Users, Send, Eye, Calendar } from 'lucide-react'
+import { MessageSquare, Plus, Search, Send, Eye } from 'lucide-react'
 
 interface Campaign {
   id: string
@@ -159,10 +159,6 @@ export default function CampanhasPage() {
     return Math.round((performance.read_count / performance.sent_count) * 100)
   }
 
-  const calculateConversionRate = (performance: Campaign['performance']) => {
-    if (performance.delivered_count === 0) return 0
-    return Math.round((performance.converted_count / performance.delivered_count) * 100)
-  }
 
   if (loading) {
     return (
@@ -320,7 +316,7 @@ export default function CampanhasPage() {
                 {/* Message Preview */}
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <p className="text-sm text-gray-700 line-clamp-3">
-                    "{campaign.content.message}"
+                    &quot;{campaign.content.message}&quot;
                   </p>
                 </div>
 

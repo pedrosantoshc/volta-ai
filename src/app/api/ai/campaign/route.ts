@@ -25,8 +25,8 @@ export async function POST(request: NextRequest) {
     
     // Return fallback content if AI fails
     const fallbackContent = {
-      title: `Campanha ${request.body?.campaignType || 'Marketing'}`,
-      message: `Olá! Sentimos sua falta no ${request.body?.businessContext?.businessName || 'nosso estabelecimento'} 😊 Volte e ganhe um desconto especial!`,
+      title: 'Campanha Marketing',
+      message: 'Olá! Sentimos sua falta no nosso estabelecimento 😊 Volte e ganhe um desconto especial!',
       expectedResults: 'Engajamento estimado de 20-25%'
     }
 
