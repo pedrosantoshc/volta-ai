@@ -125,6 +125,22 @@ export default function CustomerEnrollment() {
     }
   }, [cardId, supabase])
 
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, '')
+    
+    // Apply Brazilian phone formatting
+    if (digits.length <= 2) {
+      return digits
+    } else if (digits.length <= 7) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+    } else if (digits.length <= 11) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`
+    } else {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`
+    }
+  }
+
   const handleInputChange = (field: string, value: any) => {
     if (field.startsWith('consent.')) {
       const consentField = field.replace('consent.', '')
@@ -143,6 +159,12 @@ export default function CustomerEnrollment() {
           ...prev.custom_fields,
           [customField]: value
         }
+      }))
+    } else if (field === 'phone') {
+      const formattedPhone = formatPhoneNumber(value)
+      setFormData(prev => ({
+        ...prev,
+        phone: formattedPhone
       }))
     } else {
       setFormData(prev => ({
@@ -164,10 +186,10 @@ export default function CustomerEnrollment() {
       return false
     }
 
-    // Phone format validation (basic Brazilian format)
-    const phoneRegex = /^\(\d{2}\)\s\d{4,5}-\d{4}$/
-    if (!phoneRegex.test(formData.phone)) {
-      setError('Por favor, insira um telefone válido no formato (11) 99999-9999.')
+    // Phone format validation (more flexible Brazilian format)
+    const digits = formData.phone.replace(/\D/g, '')
+    if (digits.length < 10 || digits.length > 11) {
+      setError('Por favor, insira um telefone válido.')
       return false
     }
 
@@ -215,90 +237,26 @@ export default function CustomerEnrollment() {
     setError('')
 
     try {
-      // Check if customer already exists (by phone and business)
-      const { data: existingCustomer } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('business_id', business.id)
-        .eq('phone', formData.phone)
-        .single()
+      // Use API endpoint for enrollment with elevated permissions
+      const response = await fetch('/api/enroll', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cardId: loyaltyCard.id,
+          name: formData.name,
+          phone: formData.phone,
+          email: formData.email,
+          customFields: formData.custom_fields,
+          consent: formData.consent
+        })
+      })
 
-      let customerId: string
+      const result = await response.json()
 
-      if (existingCustomer) {
-        // Update existing customer
-        const { error: updateError } = await supabase
-          .from('customers')
-          .update({
-            name: formData.name,
-            email: formData.email || null,
-            custom_fields: formData.custom_fields,
-            consent: {
-              ...formData.consent,
-              consent_date: new Date().toISOString()
-            }
-          })
-          .eq('id', existingCustomer.id)
-          .select()
-          .single()
-
-        if (updateError) {
-          throw updateError
-        }
-
-        customerId = existingCustomer.id
-      } else {
-        // Create new customer
-        const { data: newCustomer, error: createError } = await supabase
-          .from('customers')
-          .insert({
-            business_id: business.id,
-            name: formData.name,
-            phone: formData.phone,
-            email: formData.email || null,
-            custom_fields: formData.custom_fields,
-            consent: {
-              ...formData.consent,
-              consent_date: new Date().toISOString()
-            },
-            enrollment_date: new Date().toISOString()
-          })
-          .select()
-          .single()
-
-        if (createError) {
-          throw createError
-        }
-
-        customerId = newCustomer.id
-      }
-
-      // Check if customer already has this loyalty card
-      const { data: existingCard } = await supabase
-        .from('customer_loyalty_cards')
-        .select('*')
-        .eq('customer_id', customerId)
-        .eq('loyalty_card_id', loyaltyCard.id)
-        .single()
-
-      if (!existingCard) {
-        // Create customer loyalty card instance
-        const qrCode = `${customerId}-${loyaltyCard.id}-${Date.now()}`
-        
-        const { error: cardError } = await supabase
-          .from('customer_loyalty_cards')
-          .insert({
-            customer_id: customerId,
-            loyalty_card_id: loyaltyCard.id,
-            current_stamps: 0,
-            total_redeemed: 0,
-            qr_code: qrCode,
-            status: 'active'
-          })
-
-        if (cardError) {
-          throw cardError
-        }
+      if (!response.ok) {
+        throw new Error(result.error || 'Enrollment failed')
       }
 
       setSuccess(true)
@@ -331,8 +289,8 @@ export default function CustomerEnrollment() {
 
   if (error && !loyaltyCard) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-lg">
           <Card>
             <CardHeader className="text-center">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -359,8 +317,8 @@ export default function CustomerEnrollment() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-lg">
           <Card>
             <CardHeader className="text-center">
               <div className="w-16 h-16 gradient-primary rounded-full flex items-center justify-center mx-auto mb-4">
@@ -506,9 +464,9 @@ export default function CustomerEnrollment() {
           </CardHeader>
           
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Information */}
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome completo *</Label>
                   <Input
@@ -529,7 +487,7 @@ export default function CustomerEnrollment() {
                     placeholder="(11) 99999-9999"
                     required
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm text-gray-500">
                     Usaremos para enviar notificações sobre seus selos
                   </p>
                 </div>
@@ -643,9 +601,9 @@ export default function CustomerEnrollment() {
               )}
 
               {/* LGPD Consent */}
-              <div className="space-y-4">
-                <hr className="my-4" />
-                <div className="space-y-3">
+              <div className="space-y-5">
+                <hr className="my-6" />
+                <div className="space-y-4">
                   <div className="flex items-start space-x-2">
                     <Checkbox
                       id="lgpd_consent"
