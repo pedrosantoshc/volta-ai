@@ -16,7 +16,6 @@ import {
   CheckCircle,
   ClipboardList,
   Plus,
-  TrendingUp,
   AlertCircle
 } from 'lucide-react'
 
@@ -76,8 +75,8 @@ export default function Dashboard() {
 
         // Process the data
         const processedCards = cards || []
-        const activeCardsCount = processedCards.filter(card => card.is_active).length
-        const totalStamps = processedCards.reduce((sum, card) => {
+        const activeCardsCount = processedCards.filter((card: any) => card.is_active).length
+        const totalStamps = processedCards.reduce((sum, card: any) => {
           const customerCards = card.customer_loyalty_cards || []
           return sum + customerCards.reduce((cardSum: number, cc: any) => cardSum + (cc.current_stamps || 0), 0)
         }, 0)
