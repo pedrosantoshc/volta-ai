@@ -217,16 +217,17 @@ export default function NovaCampanhaPage() {
   }
 
   const generateAIContent = async () => {
-    if (!businessContext || campaign.target_audience.segments.length === 0) {
-      setError('Selecione pelo menos um público-alvo antes de gerar conteúdo IA.')
+    if (!businessContext) {
+      setError('Erro ao carregar dados do negócio.')
       return
     }
 
     setGenerating(true)
     try {
-      const selectedSegments = availableSegments.filter(s => 
-        campaign.target_audience.segments.includes(s.id)
-      )
+      // Use selected segments or default to "all customers" for AI generation
+      const selectedSegments = campaign.target_audience.segments.length > 0
+        ? availableSegments.filter(s => campaign.target_audience.segments.includes(s.id))
+        : [{ id: 'all_customers', name: 'Todos os Clientes', description: 'Público geral', count: 0, criteria: {} }]
 
       const response = await fetch('/api/ai/campaign', {
         method: 'POST',
@@ -350,6 +351,38 @@ export default function NovaCampanhaPage() {
       .reduce((sum, segment) => sum + segment.count, 0)
   }
 
+  const getStepValidation = () => {
+    return {
+      step1: {
+        isValid: campaign.name.trim() !== '' && campaign.content.message.trim() !== '',
+        errors: {
+          name: campaign.name.trim() === '' ? 'Nome da campanha é obrigatório' : '',
+          message: campaign.content.message.trim() === '' ? 'Mensagem é obrigatória' : '',
+          messageLength: campaign.content.message.length > 160 ? 'Mensagem muito longa (máx. 160 caracteres)' : ''
+        }
+      },
+      step2: {
+        isValid: campaign.target_audience.segments.length > 0,
+        errors: {
+          audience: campaign.target_audience.segments.length === 0 ? 'Selecione pelo menos um público-alvo' : ''
+        }
+      },
+      step3: {
+        isValid: !campaign.schedule.send_immediately ? 
+          (campaign.schedule.scheduled_date !== '' && campaign.schedule.time !== '') : true,
+        errors: {
+          schedule: !campaign.schedule.send_immediately && (!campaign.schedule.scheduled_date || !campaign.schedule.time) 
+            ? 'Data e horário são obrigatórios para agendamento' : ''
+        }
+      }
+    }
+  }
+
+  const isFormCompletelyValid = () => {
+    const validation = getStepValidation()
+    return validation.step1.isValid && validation.step2.isValid && validation.step3.isValid
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -425,39 +458,44 @@ export default function NovaCampanhaPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="campaign-name">Nome da Campanha *</Label>
-                  <Input
-                    id="campaign-name"
-                    value={campaign.name}
-                    onChange={(e) => setCampaign(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Ex: Campanha Volta Cliente"
-                    required
-                  />
-                </div>
+                                 <div className="space-y-2">
+                   <Label htmlFor="campaign-name">Nome da Campanha *</Label>
+                   <Input
+                     id="campaign-name"
+                     value={campaign.name}
+                     onChange={(e) => setCampaign(prev => ({ ...prev, name: e.target.value }))}
+                     placeholder="Ex: Campanha Volta Cliente"
+                     required
+                     className={getStepValidation().step1.errors.name ? 'border-red-500' : ''}
+                   />
+                   {getStepValidation().step1.errors.name && (
+                     <p className="text-red-600 text-xs">{getStepValidation().step1.errors.name}</p>
+                   )}
+                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="campaign-message">Mensagem do WhatsApp *</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={generateAIContent}
-                      disabled={generating || campaign.target_audience.segments.length === 0}
-                      className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                    >
+                                       <Button
+                     type="button"
+                     variant="outline"
+                     size="sm"
+                     onClick={generateAIContent}
+                     disabled={generating}
+                     className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                     title={campaign.target_audience.segments.length === 0 ? 'Gerará conteúdo para público geral' : undefined}
+                   >
                       {generating ? (
                         <>
                           <div className="w-3 h-3 border border-purple-600 border-t-transparent rounded-full animate-spin mr-2"></div>
                           Gerando...
                         </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-3 h-3 mr-2" />
-                          IA Gerar
-                        </>
-                      )}
+                                             ) : (
+                         <>
+                           <Sparkles className="w-3 h-3 mr-2" />
+                           IA Gerar {campaign.target_audience.segments.length === 0 && '(Público Geral)'}
+                         </>
+                       )}
                     </Button>
                   </div>
                   <Textarea
@@ -469,14 +507,21 @@ export default function NovaCampanhaPage() {
                     }))}
                     placeholder="Olá! Temos uma oferta especial para você..."
                     rows={4}
-                    className="resize-none"
+                    className={`resize-none ${getStepValidation().step1.errors.message || getStepValidation().step1.errors.messageLength ? 'border-red-500' : ''}`}
                     maxLength={160}
                     required
                   />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Máximo 160 caracteres para WhatsApp</span>
-                    <span>{campaign.content.message.length}/160</span>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Máximo 160 caracteres para WhatsApp</span>
+                    <span className={campaign.content.message.length > 160 ? 'text-red-600 font-medium' : 'text-gray-500'}>
+                      {campaign.content.message.length}/160
+                    </span>
                   </div>
+                  {(getStepValidation().step1.errors.message || getStepValidation().step1.errors.messageLength) && (
+                    <p className="text-red-600 text-xs">
+                      {getStepValidation().step1.errors.message || getStepValidation().step1.errors.messageLength}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -492,15 +537,15 @@ export default function NovaCampanhaPage() {
                   />
                 </div>
 
-                <div className="flex justify-end">
-                  <Button
-                    onClick={() => setStep(2)}
-                    disabled={!campaign.name || !campaign.content.message}
-                    className="gradient-primary text-white"
-                  >
-                    Próximo: Público
-                  </Button>
-                </div>
+                                 <div className="flex justify-end">
+                   <Button
+                     onClick={() => setStep(2)}
+                     disabled={!getStepValidation().step1.isValid}
+                     className="gradient-primary text-white"
+                   >
+                     Próximo: Público
+                   </Button>
+                 </div>
               </CardContent>
             </Card>
           )}
@@ -537,18 +582,24 @@ export default function NovaCampanhaPage() {
                   </div>
                 ))}
 
-                <div className="flex justify-between pt-4">
-                  <Button variant="outline" onClick={() => setStep(1)}>
-                    Voltar
-                  </Button>
-                  <Button
-                    onClick={() => setStep(3)}
-                    disabled={campaign.target_audience.segments.length === 0}
-                    className="gradient-primary text-white"
-                  >
-                    Próximo: Envio
-                  </Button>
-                </div>
+                                 {getStepValidation().step2.errors.audience && (
+                   <p className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                     {getStepValidation().step2.errors.audience}
+                   </p>
+                 )}
+
+                 <div className="flex justify-between pt-4">
+                   <Button variant="outline" onClick={() => setStep(1)}>
+                     Voltar
+                   </Button>
+                   <Button
+                     onClick={() => setStep(3)}
+                     disabled={!getStepValidation().step2.isValid}
+                     className="gradient-primary text-white"
+                   >
+                     Próximo: Envio
+                   </Button>
+                 </div>
               </CardContent>
             </Card>
           )}
@@ -608,34 +659,40 @@ export default function NovaCampanhaPage() {
                       </div>
                     </div>
                   )}
-                </div>
+                                 </div>
 
-                <div className="flex justify-between pt-4">
-                  <Button variant="outline" onClick={() => setStep(2)}>
-                    Voltar
-                  </Button>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => saveCampaign('draft')}
-                      disabled={saving}
-                    >
-                      Salvar Rascunho
-                    </Button>
-                    <Button
-                      onClick={() => saveCampaign('active')}
-                      disabled={saving}
-                      className="gradient-primary text-white"
-                    >
-                      {saving ? 'Criando...' : (
-                        <>
-                          <Send className="w-4 h-4 mr-2" />
-                          {campaign.schedule.send_immediately ? 'Criar e Enviar' : 'Agendar Envio'}
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
+                 {getStepValidation().step3.errors.schedule && (
+                   <p className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                     {getStepValidation().step3.errors.schedule}
+                   </p>
+                 )}
+
+                 <div className="flex justify-between pt-4">
+                   <Button variant="outline" onClick={() => setStep(2)}>
+                     Voltar
+                   </Button>
+                   <div className="flex gap-2">
+                     <Button
+                       variant="outline"
+                       onClick={() => saveCampaign('draft')}
+                       disabled={saving || !getStepValidation().step1.isValid}
+                     >
+                       Salvar Rascunho
+                     </Button>
+                     <Button
+                       onClick={() => saveCampaign('active')}
+                       disabled={saving || !isFormCompletelyValid()}
+                       className="gradient-primary text-white"
+                     >
+                       {saving ? 'Criando...' : (
+                         <>
+                           <Send className="w-4 h-4 mr-2" />
+                           {campaign.schedule.send_immediately ? 'Criar e Enviar' : 'Agendar Envio'}
+                         </>
+                       )}
+                     </Button>
+                   </div>
+                 </div>
               </CardContent>
             </Card>
           )}

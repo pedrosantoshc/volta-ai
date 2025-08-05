@@ -5,6 +5,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { createClient } from '@/lib/supabase-client'
 import Link from 'next/link'
+import { 
+  Bot, 
+  Sparkles, 
+  BarChart3, 
+  CreditCard, 
+  Users, 
+  Award, 
+  MessageCircle,
+  CheckCircle,
+  ClipboardList,
+  Plus,
+  TrendingUp,
+  AlertCircle
+} from 'lucide-react'
 
 interface AIInsight {
   id: string
@@ -25,6 +39,7 @@ export default function Dashboard() {
   // const [recentCustomers, setRecentCustomers] = useState([])
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([])
   const [loading, setLoading] = useState(true)
+  const [hasCards, setHasCards] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -33,28 +48,73 @@ export default function Dashboard() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        // If we reach here, business record should exist (enforced by layout)
-        // Just load the basic stats
+        // Fetch real loyalty cards data
+        const { data: cards, error: cardsError } = await supabase
+          .from('loyalty_cards')
+          .select(`
+            *,
+            customer_loyalty_cards (
+              id,
+              current_stamps
+            )
+          `)
+          .eq('business_id', user.id)
 
-        // Load stats (will be 0 for new businesses)
+        if (cardsError) {
+          console.error('Error loading cards:', cardsError)
+        }
+
+        // Fetch customers count
+        const { count: customersCount, error: customersError } = await supabase
+          .from('customers')
+          .select('*', { count: 'exact', head: true })
+          .eq('business_id', user.id)
+
+        if (customersError) {
+          console.error('Error loading customers:', customersError)
+        }
+
+        // Process the data
+        const processedCards = cards || []
+        const activeCardsCount = processedCards.filter(card => card.is_active).length
+        const totalStamps = processedCards.reduce((sum, card) => {
+          const customerCards = card.customer_loyalty_cards || []
+          return sum + customerCards.reduce((cardSum: number, cc: any) => cardSum + (cc.current_stamps || 0), 0)
+        }, 0)
+
         setStats({
-          totalCustomers: 0,
-          activeCards: 0,
-          totalStamps: 0,
-          campaignsSent: 0
+          totalCustomers: customersCount || 0,
+          activeCards: activeCardsCount,
+          totalStamps: totalStamps,
+          campaignsSent: 0 // Keep this as 0 for now since campaigns aren't implemented yet
         })
 
-        // Add some mock AI insights for demonstration
-        setAiInsights([
-          {
-            id: '1',
-            type: 'campaign_suggestion',
-            title: 'Oportunidade de Re-engajamento',
-            description: 'Seus primeiros clientes estão esperando! Crie seu primeiro cartão de fidelidade para começar a atrair clientes.',
-            recommended_action: 'Criar cartão de fidelidade',
-            priority: 'high'
-          }
-        ])
+        setHasCards(processedCards.length > 0)
+
+        // Update AI insights based on actual data
+        if (processedCards.length === 0) {
+          setAiInsights([
+            {
+              id: '1',
+              type: 'campaign_suggestion',
+              title: 'Oportunidade de Re-engajamento',
+              description: 'Seus primeiros clientes estão esperando! Crie seu primeiro cartão de fidelidade para começar a atrair clientes.',
+              recommended_action: 'Criar cartão de fidelidade',
+              priority: 'high'
+            }
+          ])
+        } else {
+          setAiInsights([
+            {
+              id: '2',
+              type: 'growth_opportunity',
+              title: 'Excelente Progresso!',
+              description: `Você já tem ${processedCards.length} cartão${processedCards.length > 1 ? 'ões' : ''} de fidelidade criado${processedCards.length > 1 ? 's' : ''}. Continue promovendo para atrair mais clientes.`,
+              recommended_action: 'Ver analytics detalhados',
+              priority: 'medium'
+            }
+          ])
+        }
 
       } catch (error) {
         console.error('Error loading dashboard:', error)
@@ -91,6 +151,7 @@ export default function Dashboard() {
         </div>
         <Button className="gradient-primary text-white" asChild>
           <Link href="/dashboard/cartoes/novo">
+            <Plus className="w-4 h-4 mr-2" />
             Criar Cartão de Fidelidade
           </Link>
         </Button>
@@ -100,7 +161,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
+              <Users className="w-4 h-4 mr-2" />
               Total de Clientes
             </CardTitle>
           </CardHeader>
@@ -114,7 +176,8 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
+              <CreditCard className="w-4 h-4 mr-2" />
               Cartões Ativos
             </CardTitle>
           </CardHeader>
@@ -128,7 +191,8 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
+              <Award className="w-4 h-4 mr-2" />
               Selos Dados
             </CardTitle>
           </CardHeader>
@@ -142,7 +206,8 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
+              <MessageCircle className="w-4 h-4 mr-2" />
               Campanhas Enviadas
             </CardTitle>
           </CardHeader>
@@ -159,7 +224,7 @@ export default function Dashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <span className="text-2xl">🤖</span>
+            <Bot className="w-5 h-5" />
             <span>IA Insights</span>
           </CardTitle>
           <CardDescription>
@@ -180,20 +245,23 @@ export default function Dashboard() {
                     </p>
                     <div className="flex space-x-2">
                       <Button size="sm" className="gradient-primary text-white" asChild>
-                        <Link href="/dashboard/cartoes/novo">
-                          ✨ {insight.recommended_action}
+                        <Link href={hasCards ? "/dashboard/cartoes" : "/dashboard/cartoes/novo"}>
+                          <Sparkles className="w-4 h-4 mr-1" />
+                          {insight.recommended_action}
                         </Link>
                       </Button>
                       <Button size="sm" variant="outline">
-                        📊 Ver Detalhes
+                        <BarChart3 className="w-4 h-4 mr-1" />
+                        Ver Detalhes
                       </Button>
                     </div>
                   </div>
-                  <div className={`px-2 py-1 rounded text-xs font-medium ${
+                  <div className={`px-2 py-1 rounded text-xs font-medium flex items-center ${
                     insight.priority === 'high' 
                       ? 'bg-red-100 text-red-800' 
                       : 'bg-yellow-100 text-yellow-800'
                   }`}>
+                    <AlertCircle className="w-3 h-3 mr-1" />
                     {insight.priority === 'high' ? 'Alta' : 'Média'} Prioridade
                   </div>
                 </div>
@@ -216,7 +284,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs">✓</span>
+                  <CheckCircle className="w-4 h-4 text-white" />
                 </div>
                 <span className="text-sm">Conta criada</span>
               </div>
@@ -224,14 +292,24 @@ export default function Dashboard() {
             
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
-                  <span className="text-gray-600 text-xs">1</span>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                  hasCards ? 'bg-green-500' : 'bg-gray-300'
+                }`}>
+                  {hasCards ? (
+                    <CheckCircle className="w-4 h-4 text-white" />
+                  ) : (
+                    <span className="text-gray-600 text-xs">1</span>
+                  )}
                 </div>
                 <span className="text-sm">Criar primeiro cartão de fidelidade</span>
               </div>
-              <Button size="sm" variant="outline" asChild>
-                <Link href="/dashboard/cartoes/novo">Criar</Link>
-              </Button>
+              {!hasCards ? (
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/dashboard/cartoes/novo">Criar</Link>
+                </Button>
+              ) : (
+                <span className="text-sm text-green-600 font-medium">Concluído</span>
+              )}
             </div>
 
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -256,15 +334,25 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center text-gray-500 py-8">
-              <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              <p className="text-sm">Nenhuma atividade ainda</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Crie seu primeiro cartão para começar
-              </p>
-            </div>
+            {hasCards ? (
+              <div className="space-y-2">
+                <div className="flex items-center space-x-3 p-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm">Cartões de fidelidade criados</span>
+                </div>
+                <p className="text-xs text-gray-500 pl-5">
+                  {stats.activeCards} cartão{stats.activeCards !== 1 ? 'ões' : ''} ativo{stats.activeCards !== 1 ? 's' : ''}
+                </p>
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                <ClipboardList className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <p className="text-sm">Nenhuma atividade ainda</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Crie seu primeiro cartão para começar
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -23,5 +23,43 @@ export const createClient = () => {
     } as any
   }
 
-  return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+  return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return document.cookie
+          .split('; ')
+          .map(c => {
+            const [name, value] = c.split('=')
+            return { name, value }
+          })
+          .filter(c => c.name)
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          const cookieOptions = {
+            secure: true,
+            sameSite: 'lax' as const,
+            path: '/',
+            ...options,
+          }
+          
+          let cookie = `${name}=${value}; path=${cookieOptions.path}`
+          
+          if (cookieOptions.maxAge) {
+            cookie += `; max-age=${cookieOptions.maxAge}`
+          }
+          
+          if (cookieOptions.secure) {
+            cookie += '; secure'
+          }
+          
+          if (cookieOptions.sameSite) {
+            cookie += `; samesite=${cookieOptions.sameSite}`
+          }
+          
+          document.cookie = cookie
+        })
+      },
+    },
+  })
 }
