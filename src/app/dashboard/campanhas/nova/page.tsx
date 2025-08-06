@@ -6,17 +6,29 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-// Removed unused Select imports - will be used in future phases
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { createClient } from '@/lib/supabase-client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, MessageSquare, Users, Calendar, Sparkles, Send, Eye } from 'lucide-react'
+import { 
+  ArrowLeft, 
+  MessageSquare, 
+  Users, 
+  Calendar, 
+  Sparkles, 
+  Send, 
+  Eye,
+  Plus,
+  Target,
+  Bot
+} from 'lucide-react'
 
 interface Campaign {
-  name: string
+  name: string // Internal campaign name
+  title: string // WhatsApp message title (can be AI generated)
   type: 'manual' | 'ai_generated'
   content: {
     message: string
@@ -41,11 +53,13 @@ interface CustomerSegment {
   description: string
   count: number
   criteria: any
+  isCustom?: boolean
 }
 
 export default function NovaCampanhaPage() {
   const [campaign, setCampaign] = useState<Campaign>({
     name: '',
+    title: '',
     type: 'manual',
     content: {
       message: '',
@@ -68,6 +82,8 @@ export default function NovaCampanhaPage() {
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
+  const [showNewSegmentDialog, setShowNewSegmentDialog] = useState(false)
+  const [newSegment, setNewSegment] = useState({ name: '', description: '' })
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -99,8 +115,8 @@ export default function NovaCampanhaPage() {
 
       setBusinessContext(business)
 
-      // Load customer segments
-      await loadCustomerSegments(user.id)
+      // Load both automatic and custom segments
+      await loadAllSegments(user.id)
 
       // Check if coming from AI insights with pre-filled data
       const prefilledType = searchParams.get('type')
@@ -111,6 +127,7 @@ export default function NovaCampanhaPage() {
         setCampaign(prev => ({
           ...prev,
           name: decodeURIComponent(prefilledTitle),
+          title: decodeURIComponent(prefilledTitle),
           type: 'ai_generated',
           content: {
             ...prev.content,
@@ -126,9 +143,9 @@ export default function NovaCampanhaPage() {
     }
   }
 
-  const loadCustomerSegments = async (businessId: string) => {
+  const loadAllSegments = async (businessId: string) => {
     try {
-      // Load customers data to analyze segments
+      // Load customers data to analyze automatic segments
       const { data: customers, error: customersError } = await supabase
         .from('customers')
         .select(`
@@ -147,14 +164,54 @@ export default function NovaCampanhaPage() {
 
       if (customersError) {
         console.error('Error loading customers:', customersError)
-        return
       }
 
-      // Analyze and create segments
-      const segments = analyzeCustomerSegments(customers || [])
-      setAvailableSegments(segments)
+      // Create automatic segments (even if empty)
+      const automaticSegments = analyzeCustomerSegments(customers || [])
+      
+      // Always include basic segments even if they have 0 customers
+      const basicSegments: CustomerSegment[] = [
+        {
+          id: 'all_customers',
+          name: 'Todos os Clientes',
+          description: 'Todos os clientes cadastrados',
+          count: customers?.length || 0,
+          criteria: { type: 'all' }
+        },
+        {
+          id: 'general_public',
+          name: 'Público Geral',
+          description: 'Alcance amplo para novos clientes',
+          count: 0,
+          criteria: { type: 'general' },
+          isCustom: true
+        }
+      ]
+
+      // Combine with automatic segments
+      const allSegments = [...basicSegments, ...automaticSegments.filter(seg => !basicSegments.find(basic => basic.id === seg.id))]
+      
+      setAvailableSegments(allSegments)
     } catch (err) {
       console.error('Error loading customer segments:', err)
+      // Set basic segments even if loading fails
+      setAvailableSegments([
+        {
+          id: 'all_customers',
+          name: 'Todos os Clientes',
+          description: 'Todos os clientes cadastrados',
+          count: 0,
+          criteria: { type: 'all' }
+        },
+        {
+          id: 'general_public',
+          name: 'Público Geral',
+          description: 'Alcance amplo para novos clientes',
+          count: 0,
+          criteria: { type: 'general' },
+          isCustom: true
+        }
+      ])
     }
   }
 
@@ -164,13 +221,6 @@ export default function NovaCampanhaPage() {
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
     return [
-      {
-        id: 'all_customers',
-        name: 'Todos os Clientes',
-        description: 'Todos os clientes cadastrados',
-        count: customers.length,
-        criteria: { type: 'all' }
-      },
       {
         id: 'inactive_customers',
         name: 'Clientes Inativos',
@@ -213,7 +263,24 @@ export default function NovaCampanhaPage() {
         ).length,
         criteria: { type: 'completed' }
       }
-    ].filter(segment => segment.count > 0)
+    ]
+  }
+
+  const createCustomSegment = () => {
+    if (!newSegment.name.trim()) return
+
+    const customSegment: CustomerSegment = {
+      id: `custom_${Date.now()}`,
+      name: newSegment.name,
+      description: newSegment.description || 'Segmento personalizado',
+      count: 0,
+      criteria: { type: 'custom' },
+      isCustom: true
+    }
+
+    setAvailableSegments(prev => [...prev, customSegment])
+    setNewSegment({ name: '', description: '' })
+    setShowNewSegmentDialog(false)
   }
 
   const generateAIContent = async () => {
@@ -224,10 +291,10 @@ export default function NovaCampanhaPage() {
 
     setGenerating(true)
     try {
-      // Use selected segments or default to "all customers" for AI generation
+      // Use selected segments or default to "general public" for AI generation
       const selectedSegments = campaign.target_audience.segments.length > 0
         ? availableSegments.filter(s => campaign.target_audience.segments.includes(s.id))
-        : [{ id: 'all_customers', name: 'Todos os Clientes', description: 'Público geral', count: 0, criteria: {} }]
+        : [{ id: 'general_public', name: 'Público Geral', description: 'Público geral', count: 0, criteria: {} }]
 
       const response = await fetch('/api/ai/campaign', {
         method: 'POST',
@@ -255,7 +322,7 @@ export default function NovaCampanhaPage() {
 
       setCampaign(prev => ({
         ...prev,
-        name: data.title,
+        title: data.title,
         type: 'ai_generated',
         content: {
           ...prev.content,
@@ -304,7 +371,10 @@ export default function NovaCampanhaPage() {
           type: 'manual',
           conditions: {}
         },
-        content: campaign.content,
+        content: {
+          ...campaign.content,
+          title: campaign.title // Include the campaign title in content
+        },
         target_audience: campaign.target_audience,
         schedule: {
           ...campaign.schedule,
@@ -354,11 +424,9 @@ export default function NovaCampanhaPage() {
   const getStepValidation = () => {
     return {
       step1: {
-        isValid: campaign.name.trim() !== '' && campaign.content.message.trim() !== '',
+        isValid: campaign.name.trim() !== '',
         errors: {
           name: campaign.name.trim() === '' ? 'Nome da campanha é obrigatório' : '',
-          message: campaign.content.message.trim() === '' ? 'Mensagem é obrigatória' : '',
-          messageLength: campaign.content.message.length > 160 ? 'Mensagem muito longa (máx. 160 caracteres)' : ''
         }
       },
       step2: {
@@ -368,6 +436,14 @@ export default function NovaCampanhaPage() {
         }
       },
       step3: {
+        isValid: campaign.title.trim() !== '' && campaign.content.message.trim() !== '',
+        errors: {
+          title: campaign.title.trim() === '' ? 'Título da campanha é obrigatório' : '',
+          message: campaign.content.message.trim() === '' ? 'Mensagem é obrigatória' : '',
+          messageLength: campaign.content.message.length > 160 ? 'Mensagem muito longa (máx. 160 caracteres)' : ''
+        }
+      },
+      step4: {
         isValid: !campaign.schedule.send_immediately ? 
           (campaign.schedule.scheduled_date !== '' && campaign.schedule.time !== '') : true,
         errors: {
@@ -380,7 +456,7 @@ export default function NovaCampanhaPage() {
 
   const isFormCompletelyValid = () => {
     const validation = getStepValidation()
-    return validation.step1.isValid && validation.step2.isValid && validation.step3.isValid
+    return validation.step1.isValid && validation.step2.isValid && validation.step3.isValid && validation.step4.isValid
   }
 
   if (loading) {
@@ -418,7 +494,7 @@ export default function NovaCampanhaPage() {
           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-purple-600 text-white' : 'bg-gray-200'}`}>
             1
           </div>
-          <span className="text-sm font-medium">Conteúdo</span>
+          <span className="text-sm font-medium">Nome</span>
         </div>
         <div className={`w-8 h-1 rounded ${step >= 2 ? 'bg-purple-600' : 'bg-gray-200'}`}></div>
         <div className={`flex items-center space-x-2 ${step >= 2 ? 'text-purple-600' : 'text-gray-400'}`}>
@@ -431,6 +507,13 @@ export default function NovaCampanhaPage() {
         <div className={`flex items-center space-x-2 ${step >= 3 ? 'text-purple-600' : 'text-gray-400'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-purple-600 text-white' : 'bg-gray-200'}`}>
             3
+          </div>
+          <span className="text-sm font-medium">Conteúdo</span>
+        </div>
+        <div className={`w-8 h-1 rounded ${step >= 4 ? 'bg-purple-600' : 'bg-gray-200'}`}></div>
+        <div className={`flex items-center space-x-2 ${step >= 4 ? 'text-purple-600' : 'text-gray-400'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 4 ? 'bg-purple-600 text-white' : 'bg-gray-200'}`}>
+            4
           </div>
           <span className="text-sm font-medium">Envio</span>
         </div>
@@ -445,8 +528,164 @@ export default function NovaCampanhaPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Step 1: Content */}
+          
+          {/* Step 1: Campaign Name */}
           {step === 1 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <MessageSquare className="w-5 h-5" />
+                  <span>Nome da Campanha</span>
+                </CardTitle>
+                <CardDescription>
+                  Defina um nome interno para organizar suas campanhas
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="campaign-name">Nome da Campanha *</Label>
+                  <Input
+                    id="campaign-name"
+                    value={campaign.name}
+                    onChange={(e) => setCampaign(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Ex: Campanha Volta Cliente - Janeiro 2024"
+                    required
+                    className={getStepValidation().step1.errors.name ? 'border-red-500' : ''}
+                  />
+                  {getStepValidation().step1.errors.name && (
+                    <p className="text-red-600 text-xs">{getStepValidation().step1.errors.name}</p>
+                  )}
+                  <p className="text-sm text-gray-500">
+                    Este nome é apenas para sua organização interna e não será mostrado aos clientes.
+                  </p>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => setStep(2)}
+                    disabled={!getStepValidation().step1.isValid}
+                    className="gradient-primary text-white"
+                  >
+                    Próximo: Público
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 2: Target Audience */}
+          {step === 2 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="w-5 h-5" />
+                  <span>Público-Alvo</span>
+                </CardTitle>
+                <CardDescription>
+                  Selecione os segmentos de clientes que receberão a campanha
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-medium">Segmentos Disponíveis</h4>
+                  <Dialog open={showNewSegmentDialog} onOpenChange={setShowNewSegmentDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Criar Segmento
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Criar Novo Segmento</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="segment-name">Nome do Segmento</Label>
+                          <Input
+                            id="segment-name"
+                            value={newSegment.name}
+                            onChange={(e) => setNewSegment(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="Ex: Clientes VIP"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="segment-description">Descrição</Label>
+                          <Textarea
+                            id="segment-description"
+                            value={newSegment.description}
+                            onChange={(e) => setNewSegment(prev => ({ ...prev, description: e.target.value }))}
+                            placeholder="Ex: Clientes com alto valor de compra"
+                            rows={3}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button onClick={() => setShowNewSegmentDialog(false)} variant="outline" className="flex-1">
+                            Cancelar
+                          </Button>
+                          <Button onClick={createCustomSegment} className="flex-1" disabled={!newSegment.name.trim()}>
+                            Criar Segmento
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="grid gap-3">
+                  {availableSegments.map((segment) => (
+                    <div key={segment.id} className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <Checkbox
+                        id={segment.id}
+                        checked={campaign.target_audience.segments.includes(segment.id)}
+                        onCheckedChange={(checked) => handleSegmentToggle(segment.id, checked as boolean)}
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor={segment.id} className="flex items-center justify-between cursor-pointer">
+                          <div>
+                            <div className="font-medium text-gray-900 flex items-center">
+                              {segment.name}
+                              {segment.isCustom && (
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  Personalizado
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-500">{segment.description}</div>
+                          </div>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {segment.count} clientes
+                          </Badge>
+                        </Label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {getStepValidation().step2.errors.audience && (
+                  <p className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                    {getStepValidation().step2.errors.audience}
+                  </p>
+                )}
+
+                <div className="flex justify-between pt-4">
+                  <Button variant="outline" onClick={() => setStep(1)}>
+                    Voltar
+                  </Button>
+                  <Button
+                    onClick={() => setStep(3)}
+                    disabled={!getStepValidation().step2.isValid}
+                    className="gradient-primary text-white"
+                  >
+                    Próximo: Conteúdo
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 3: Content Creation */}
+          {step === 3 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -454,50 +693,61 @@ export default function NovaCampanhaPage() {
                   <span>Conteúdo da Campanha</span>
                 </CardTitle>
                 <CardDescription>
-                  Defina o nome e a mensagem da sua campanha
+                  Crie o título e a mensagem que serão enviados no WhatsApp
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                                 <div className="space-y-2">
-                   <Label htmlFor="campaign-name">Nome da Campanha *</Label>
-                   <Input
-                     id="campaign-name"
-                     value={campaign.name}
-                     onChange={(e) => setCampaign(prev => ({ ...prev, name: e.target.value }))}
-                     placeholder="Ex: Campanha Volta Cliente"
-                     required
-                     className={getStepValidation().step1.errors.name ? 'border-red-500' : ''}
-                   />
-                   {getStepValidation().step1.errors.name && (
-                     <p className="text-red-600 text-xs">{getStepValidation().step1.errors.name}</p>
-                   )}
-                 </div>
-
-                <div className="space-y-2">
+                
+                {/* AI Generation Section */}
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="campaign-message">Mensagem do WhatsApp *</Label>
-                                       <Button
-                     type="button"
-                     variant="outline"
-                     size="sm"
-                     onClick={generateAIContent}
-                     disabled={generating}
-                     className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                     title={campaign.target_audience.segments.length === 0 ? 'Gerará conteúdo para público geral' : undefined}
-                   >
+                    <div className="flex items-center space-x-3">
+                      <Bot className="w-5 h-5 text-purple-600" />
+                      <div>
+                        <h4 className="font-medium text-purple-900">Geração Inteligente</h4>
+                        <p className="text-sm text-purple-700">Use IA para criar título e conteúdo personalizados</p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={generateAIContent}
+                      disabled={generating}
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    >
                       {generating ? (
                         <>
-                          <div className="w-3 h-3 border border-purple-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                           Gerando...
                         </>
-                                             ) : (
-                         <>
-                           <Sparkles className="w-3 h-3 mr-2" />
-                           IA Gerar {campaign.target_audience.segments.length === 0 && '(Público Geral)'}
-                         </>
-                       )}
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Gerar com IA
+                        </>
+                      )}
                     </Button>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="campaign-title">Título da Campanha (WhatsApp) *</Label>
+                  <Input
+                    id="campaign-title"
+                    value={campaign.title}
+                    onChange={(e) => setCampaign(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Ex: Oferta Especial para Você!"
+                    required
+                    className={getStepValidation().step3.errors.title ? 'border-red-500' : ''}
+                  />
+                  {getStepValidation().step3.errors.title && (
+                    <p className="text-red-600 text-xs">{getStepValidation().step3.errors.title}</p>
+                  )}
+                  <p className="text-sm text-gray-500">
+                    Este será o título que aparece na mensagem do WhatsApp.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="campaign-message">Mensagem do WhatsApp *</Label>
                   <Textarea
                     id="campaign-message"
                     value={campaign.content.message}
@@ -507,7 +757,7 @@ export default function NovaCampanhaPage() {
                     }))}
                     placeholder="Olá! Temos uma oferta especial para você..."
                     rows={4}
-                    className={`resize-none ${getStepValidation().step1.errors.message || getStepValidation().step1.errors.messageLength ? 'border-red-500' : ''}`}
+                    className={`resize-none ${getStepValidation().step3.errors.message || getStepValidation().step3.errors.messageLength ? 'border-red-500' : ''}`}
                     maxLength={160}
                     required
                   />
@@ -517,9 +767,9 @@ export default function NovaCampanhaPage() {
                       {campaign.content.message.length}/160
                     </span>
                   </div>
-                  {(getStepValidation().step1.errors.message || getStepValidation().step1.errors.messageLength) && (
+                  {(getStepValidation().step3.errors.message || getStepValidation().step3.errors.messageLength) && (
                     <p className="text-red-600 text-xs">
-                      {getStepValidation().step1.errors.message || getStepValidation().step1.errors.messageLength}
+                      {getStepValidation().step3.errors.message || getStepValidation().step3.errors.messageLength}
                     </p>
                   )}
                 </div>
@@ -537,80 +787,29 @@ export default function NovaCampanhaPage() {
                   />
                 </div>
 
-                                 <div className="flex justify-end">
-                   <Button
-                     onClick={() => setStep(2)}
-                     disabled={!getStepValidation().step1.isValid}
-                     className="gradient-primary text-white"
-                   >
-                     Próximo: Público
-                   </Button>
-                 </div>
+                <div className="flex justify-between pt-4">
+                  <Button variant="outline" onClick={() => setStep(2)}>
+                    Voltar
+                  </Button>
+                  <Button
+                    onClick={() => setStep(4)}
+                    disabled={!getStepValidation().step3.isValid}
+                    className="gradient-primary text-white"
+                  >
+                    Próximo: Envio
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Step 2: Audience */}
-          {step === 2 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Users className="w-5 h-5" />
-                  <span>Público-Alvo</span>
-                </CardTitle>
-                <CardDescription>
-                  Selecione os segmentos de clientes que receberão a campanha
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {availableSegments.map((segment) => (
-                  <div key={segment.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                    <Checkbox
-                      id={segment.id}
-                      checked={campaign.target_audience.segments.includes(segment.id)}
-                      onCheckedChange={(checked) => handleSegmentToggle(segment.id, checked as boolean)}
-                    />
-                    <div className="flex-1">
-                      <Label htmlFor={segment.id} className="flex items-center justify-between cursor-pointer">
-                        <div>
-                          <div className="font-medium">{segment.name}</div>
-                          <div className="text-sm text-gray-500">{segment.description}</div>
-                        </div>
-                        <Badge variant="outline">{segment.count} clientes</Badge>
-                      </Label>
-                    </div>
-                  </div>
-                ))}
-
-                                 {getStepValidation().step2.errors.audience && (
-                   <p className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-                     {getStepValidation().step2.errors.audience}
-                   </p>
-                 )}
-
-                 <div className="flex justify-between pt-4">
-                   <Button variant="outline" onClick={() => setStep(1)}>
-                     Voltar
-                   </Button>
-                   <Button
-                     onClick={() => setStep(3)}
-                     disabled={!getStepValidation().step2.isValid}
-                     className="gradient-primary text-white"
-                   >
-                     Próximo: Envio
-                   </Button>
-                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Step 3: Schedule */}
-          {step === 3 && (
+          {/* Step 4: Send/Schedule */}
+          {step === 4 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Calendar className="w-5 h-5" />
-                  <span>Agendamento</span>
+                  <span>Agendamento e Envio</span>
                 </CardTitle>
                 <CardDescription>
                   Defina quando a campanha será enviada
@@ -659,40 +858,40 @@ export default function NovaCampanhaPage() {
                       </div>
                     </div>
                   )}
-                                 </div>
+                </div>
 
-                 {getStepValidation().step3.errors.schedule && (
-                   <p className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-                     {getStepValidation().step3.errors.schedule}
-                   </p>
-                 )}
+                {getStepValidation().step4.errors.schedule && (
+                  <p className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                    {getStepValidation().step4.errors.schedule}
+                  </p>
+                )}
 
-                 <div className="flex justify-between pt-4">
-                   <Button variant="outline" onClick={() => setStep(2)}>
-                     Voltar
-                   </Button>
-                   <div className="flex gap-2">
-                     <Button
-                       variant="outline"
-                       onClick={() => saveCampaign('draft')}
-                       disabled={saving || !getStepValidation().step1.isValid}
-                     >
-                       Salvar Rascunho
-                     </Button>
-                     <Button
-                       onClick={() => saveCampaign('active')}
-                       disabled={saving || !isFormCompletelyValid()}
-                       className="gradient-primary text-white"
-                     >
-                       {saving ? 'Criando...' : (
-                         <>
-                           <Send className="w-4 h-4 mr-2" />
-                           {campaign.schedule.send_immediately ? 'Criar e Enviar' : 'Agendar Envio'}
-                         </>
-                       )}
-                     </Button>
-                   </div>
-                 </div>
+                <div className="flex justify-between pt-4">
+                  <Button variant="outline" onClick={() => setStep(3)}>
+                    Voltar
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => saveCampaign('draft')}
+                      disabled={saving || !getStepValidation().step1.isValid}
+                    >
+                      Salvar Rascunho
+                    </Button>
+                    <Button
+                      onClick={() => saveCampaign('active')}
+                      disabled={saving || !isFormCompletelyValid()}
+                      className="gradient-primary text-white"
+                    >
+                      {saving ? 'Criando...' : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          {campaign.schedule.send_immediately ? 'Criar e Enviar' : 'Agendar Envio'}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -713,7 +912,12 @@ export default function NovaCampanhaPage() {
                 <div className="text-sm font-medium text-green-800 mb-1">
                   {businessContext?.name || 'Seu Negócio'}
                 </div>
-                <div className="text-sm text-green-700 bg-white p-2 rounded shadow-sm">
+                <div className="text-sm text-green-700 bg-white p-3 rounded-lg shadow-sm">
+                  {campaign.title && (
+                    <div className="font-medium mb-2">
+                      {campaign.title}
+                    </div>
+                  )}
                   {campaign.content.message || 'Sua mensagem aparecerá aqui...'}
                   {campaign.content.cta_text && (
                     <div className="mt-2 text-blue-600 font-medium">
@@ -726,8 +930,12 @@ export default function NovaCampanhaPage() {
               {/* Campaign Stats */}
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Nome:</span>
+                  <span className="text-gray-600">Nome interno:</span>
                   <span className="font-medium">{campaign.name || 'Sem nome'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Título WhatsApp:</span>
+                  <span className="font-medium">{campaign.title || 'Sem título'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Tipo:</span>
