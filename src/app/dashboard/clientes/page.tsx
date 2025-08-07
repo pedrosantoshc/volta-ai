@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { createClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
+import { Trash2, Search, Users, Eye, Gift, CheckSquare, Square } from 'lucide-react'
 import Link from "next/link"
 
 interface Customer {
@@ -51,6 +52,8 @@ export default function ClientesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [error, setError] = useState('')
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([])
+  const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -143,6 +146,81 @@ export default function ClientesPage() {
     return phone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3')
   }
 
+  // Delete functionality
+  const handleDeleteCustomer = async (customerId: string, customerName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o cliente "${customerName}"? Esta ação não pode ser desfeita.`)) {
+      return
+    }
+
+    try {
+      setIsDeleting(true)
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .eq('id', customerId)
+
+      if (error) throw error
+
+      // Remove from local state
+      setCustomers(prev => prev.filter(c => c.id !== customerId))
+      setFilteredCustomers(prev => prev.filter(c => c.id !== customerId))
+      
+      alert('Cliente excluído com sucesso!')
+    } catch (error) {
+      console.error('Error deleting customer:', error)
+      alert('Erro ao excluir cliente. Tente novamente.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedCustomers.length === 0) {
+      alert('Selecione pelo menos um cliente para excluir.')
+      return
+    }
+
+    if (!confirm(`Tem certeza que deseja excluir ${selectedCustomers.length} cliente(s)? Esta ação não pode ser desfeita.`)) {
+      return
+    }
+
+    try {
+      setIsDeleting(true)
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .in('id', selectedCustomers)
+
+      if (error) throw error
+
+      // Remove from local state
+      setCustomers(prev => prev.filter(c => !selectedCustomers.includes(c.id)))
+      setFilteredCustomers(prev => prev.filter(c => !selectedCustomers.includes(c.id)))
+      setSelectedCustomers([])
+      
+      alert(`${selectedCustomers.length} cliente(s) excluído(s) com sucesso!`)
+    } catch (error) {
+      console.error('Error deleting customers:', error)
+      alert('Erro ao excluir clientes. Tente novamente.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const toggleSelectCustomer = (customerId: string) => {
+    setSelectedCustomers(prev => 
+      prev.includes(customerId) 
+        ? prev.filter(id => id !== customerId)
+        : [...prev, customerId]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedCustomers(prev => 
+      prev.length === filteredCustomers.length ? [] : filteredCustomers.map(c => c.id)
+    )
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -223,12 +301,13 @@ export default function ClientesPage() {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 placeholder="Buscar por nome, telefone ou email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
+                className="w-full pl-10"
               />
             </div>
             <div className="flex gap-2">
@@ -251,12 +330,54 @@ export default function ClientesPage() {
                 onClick={() => setSelectedFilter('inactive')}
                 size="sm"
               >
-                Inativos ({customers.filter(c => !c.loyalty_cards?.some(card => card.status === 'active')).length})
+                Clientes eventuais ({customers.filter(c => !c.loyalty_cards?.some(card => card.status === 'active')).length})
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Bulk Actions */}
+      {filteredCustomers.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={toggleSelectAll}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                >
+                  {selectedCustomers.length === filteredCustomers.length ? (
+                    <CheckSquare className="w-4 h-4" />
+                  ) : (
+                    <Square className="w-4 h-4" />
+                  )}
+                  {selectedCustomers.length === filteredCustomers.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                </button>
+                
+                {selectedCustomers.length > 0 && (
+                  <span className="text-sm text-gray-600">
+                    {selectedCustomers.length} cliente(s) selecionado(s)
+                  </span>
+                )}
+              </div>
+              
+              {selectedCustomers.length > 0 && (
+                <Button
+                  onClick={handleBulkDelete}
+                  disabled={isDeleting}
+                  variant="destructive"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {isDeleting ? 'Excluindo...' : `Excluir ${selectedCustomers.length} cliente(s)`}
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Customers List */}
       {filteredCustomers.length > 0 ? (
@@ -265,7 +386,20 @@ export default function ClientesPage() {
             <Card key={customer.id}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                  <div className="flex items-start gap-4 flex-1">
+                    {/* Selection Checkbox */}
+                    <button
+                      onClick={() => toggleSelectCustomer(customer.id)}
+                      className="mt-1 p-1 hover:bg-gray-100 rounded"
+                    >
+                      {selectedCustomers.includes(customer.id) ? (
+                        <CheckSquare className="w-5 h-5 text-blue-600" />
+                      ) : (
+                        <Square className="w-5 h-5 text-gray-400" />
+                      )}
+                    </button>
+                    
+                    <div className="flex-1">
                     {/* Customer Info */}
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
@@ -357,7 +491,8 @@ export default function ClientesPage() {
                       </div>
                     </div>
                   </div>
-
+                  </div>
+                  
                   {/* Actions */}
                   <div className="flex flex-col space-y-2 ml-4">
                     <Button
@@ -373,6 +508,16 @@ export default function ClientesPage() {
                       disabled
                     >
                       Dar Selo
+                    </Button>
+                    <Button
+                      onClick={() => handleDeleteCustomer(customer.id, customer.name)}
+                      disabled={isDeleting}
+                      variant="destructive"
+                      size="sm"
+                      className="flex items-center gap-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Excluir
                     </Button>
                   </div>
                 </div>
