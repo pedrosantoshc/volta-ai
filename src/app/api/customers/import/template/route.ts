@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
       ['- tags: Tags separadas por vírgula (ex: vip, ativo)'],
       [''],
       ['Cartões disponíveis:'],
-      ...(loyaltyCards?.map(card => [`- ${card.name}`]) || [['Nenhum cartão encontrado']])
+      ...(loyaltyCards?.map((card: { id: string, name: string }) => [`- ${card.name}`]) || [['Nenhum cartão encontrado']])
     ]
 
     const instructionsSheet = XLSX.utils.aoa_to_sheet(instructionsData)
