@@ -166,6 +166,13 @@ export default function ClientesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Clientes</h1>
           <p className="text-gray-600">Gerencie seus clientes do programa de fidelidade</p>
         </div>
+        <div>
+          <Button className="gradient-primary text-white" asChild>
+            <Link href="/dashboard/clientes/importar">
+              Importar Clientes
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {error && (
