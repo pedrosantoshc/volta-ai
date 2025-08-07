@@ -161,6 +161,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate business consent confirmation
+    const businessConsentConfirmed = formData.get('business_consent_confirmed') === 'true'
+    const consentSource = formData.get('consent_source') || 'import_crm_existing'
+    
+    if (!businessConsentConfirmed) {
+      return NextResponse.json(
+        { error: 'Confirmação de conformidade LGPD é obrigatória para importação' },
+        { status: 400 }
+      )
+    }
+
     // Validate file type
     if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
       return NextResponse.json(
@@ -406,9 +417,12 @@ export async function POST(request: NextRequest) {
               last_visit: lastVisit?.toISOString() || null,
               tags: tags,
               consent: {
-                marketing: true,
-                data_processing: true,
-                consent_date: new Date().toISOString()
+                lgpd_accepted: true,
+                marketing_consent: true,
+                terms_accepted: true,
+                consent_date: new Date().toISOString(),
+                consent_source: consentSource,
+                business_attestation: businessConsentConfirmed
               },
               enrollment_date: new Date().toISOString()
             })

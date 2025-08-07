@@ -31,6 +31,7 @@ export default function ImportarClientes() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [businessConsentConfirmed, setBusinessConsentConfirmed] = useState(false)
   const router = useRouter()
 
   const handleDownloadTemplate = async () => {
@@ -94,6 +95,8 @@ export default function ImportarClientes() {
       setIsUploading(true)
       const formData = new FormData()
       formData.append('file', selectedFile)
+      formData.append('business_consent_confirmed', businessConsentConfirmed.toString())
+      formData.append('consent_source', 'import_crm_existing')
 
       const response = await fetch('/api/customers/import', {
         method: 'POST',
@@ -204,6 +207,38 @@ export default function ImportarClientes() {
             Preencha o template com os dados dos seus clientes e envie o arquivo para importação.
           </p>
 
+          {/* LGPD Business Consent Disclaimer */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-800 mb-2">Declaração de Conformidade LGPD</h3>
+                <p className="text-sm text-amber-700 mb-3">
+                  Ao importar dados de clientes, você declara que:
+                </p>
+                <ul className="text-sm text-amber-700 space-y-1 mb-4">
+                  <li>• Possui base legal válida para o tratamento destes dados</li>
+                  <li>• Os clientes forneceram consentimento apropriado em seu sistema/CRM</li>
+                  <li>• Está em conformidade com os requisitos da LGPD</li>
+                  <li>• É responsável pela validade dos consentimentos importados</li>
+                </ul>
+                
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={businessConsentConfirmed}
+                    onChange={(e) => setBusinessConsentConfirmed(e.target.checked)}
+                    className="mt-1 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <span className="text-sm text-amber-800 font-medium">
+                    Confirmo que todas as informações dos clientes foram obtidas com o devido consentimento 
+                    e que possuo base legal para seu tratamento conforme a LGPD.
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
           {/* Upload Area */}
           <div
             className={`border-2 border-dashed border-gray-300 rounded-lg p-8 text-center transition-colors ${
@@ -258,19 +293,33 @@ export default function ImportarClientes() {
           </div>
 
           {selectedFile && (
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={handleUpload}
-                disabled={isUploading}
-                className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                {isUploading ? (
-                  <Clock className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Upload className="w-5 h-5" />
-                )}
-                {isUploading ? 'Processando...' : 'Importar Clientes'}
-              </button>
+            <div className="mt-4">
+              {!businessConsentConfirmed && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                  <p className="text-sm text-red-700 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    Você deve confirmar a declaração de conformidade LGPD antes de importar.
+                  </p>
+                </div>
+              )}
+              <div className="flex justify-end">
+                <button
+                  onClick={handleUpload}
+                  disabled={isUploading || !businessConsentConfirmed}
+                  className={`px-6 py-3 rounded-lg flex items-center gap-2 transition-colors ${
+                    businessConsentConfirmed 
+                      ? 'bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  {isUploading ? (
+                    <Clock className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Upload className="w-5 h-5" />
+                  )}
+                  {isUploading ? 'Processando...' : 'Importar Clientes'}
+                </button>
+              </div>
             </div>
           )}
         </div>
