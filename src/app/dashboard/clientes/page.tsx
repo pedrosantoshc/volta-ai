@@ -68,7 +68,7 @@ export default function ClientesPage() {
           .from('customers')
           .select(`
             *,
-            customer_loyalty_cards (
+            loyalty_cards:customer_loyalty_cards (
               *,
               loyalty_cards (
                 id,
@@ -116,11 +116,11 @@ export default function ClientesPage() {
     // Apply status filter
     if (selectedFilter === 'active') {
       filtered = filtered.filter(customer => 
-        customer.loyalty_cards.some(card => card.status === 'active')
+        customer.loyalty_cards?.some(card => card.status === 'active') || false
       )
     } else if (selectedFilter === 'inactive') {
       filtered = filtered.filter(customer => 
-        !customer.loyalty_cards.some(card => card.status === 'active')
+        !customer.loyalty_cards?.some(card => card.status === 'active')
       )
     }
 
@@ -128,11 +128,11 @@ export default function ClientesPage() {
   }, [customers, searchTerm, selectedFilter])
 
   const getTotalStamps = (customer: Customer) => {
-    return customer.loyalty_cards.reduce((total, card) => total + card.current_stamps, 0)
+    return customer.loyalty_cards?.reduce((total, card) => total + card.current_stamps, 0) || 0
   }
 
   const getTotalRedeemed = (customer: Customer) => {
-    return customer.loyalty_cards.reduce((total, card) => total + card.total_redeemed, 0)
+    return customer.loyalty_cards?.reduce((total, card) => total + card.total_redeemed, 0) || 0
   }
 
   const formatDate = (dateString: string) => {
@@ -195,7 +195,7 @@ export default function ClientesPage() {
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-green-600">
-                {customers.filter(c => c.loyalty_cards.some(card => card.status === 'active')).length}
+                {customers.filter(c => c.loyalty_cards?.some(card => card.status === 'active')).length}
               </div>
               <p className="text-sm text-gray-600">Clientes Ativos</p>
             </CardContent>
@@ -244,14 +244,14 @@ export default function ClientesPage() {
                 onClick={() => setSelectedFilter('active')}
                 size="sm"
               >
-                Ativos ({customers.filter(c => c.loyalty_cards.some(card => card.status === 'active')).length})
+                Ativos ({customers.filter(c => c.loyalty_cards?.some(card => card.status === 'active')).length})
               </Button>
               <Button
                 variant={selectedFilter === 'inactive' ? 'default' : 'outline'}
                 onClick={() => setSelectedFilter('inactive')}
                 size="sm"
               >
-                Inativos ({customers.filter(c => !c.loyalty_cards.some(card => card.status === 'active')).length})
+                Inativos ({customers.filter(c => !c.loyalty_cards?.some(card => card.status === 'active')).length})
               </Button>
             </div>
           </div>

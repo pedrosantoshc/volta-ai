@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Clock, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface ImportError {
   row: number
@@ -30,6 +31,7 @@ export default function ImportarClientes() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
 
   const handleDownloadTemplate = async () => {
     try {
@@ -108,6 +110,13 @@ export default function ImportarClientes() {
       setSelectedFile(null)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
+      }
+
+      // Redirect to customers page after successful import
+      if (result.success && result.errorCount === 0) {
+        setTimeout(() => {
+          router.push('/dashboard/clientes')
+        }, 2000) // Wait 2 seconds to show success message
       }
     } catch (error) {
       console.error('Error uploading file:', error)
@@ -375,7 +384,7 @@ export default function ImportarClientes() {
             </li>
             <li className="flex items-start gap-2">
               <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-              <span><strong>selos_atuais:</strong> Número de selos que o cliente já possui (0-999)</span>
+              <span><strong>selos_atuais:</strong> Número de selos (máximo conforme configuração do cartão)</span>
             </li>
           </ul>
         </div>
