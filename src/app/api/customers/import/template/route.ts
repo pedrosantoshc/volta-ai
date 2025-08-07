@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
       const cardNames = loyaltyCards.map((card: { id: string, name: string }) => card.name)
       const optionsData = [
         ['Cartões Disponíveis'],
-        ...cardNames.map(name => [name])
+        ...cardNames.map((name: string) => [name])
       ]
       
       const optionsSheet = XLSX.utils.aoa_to_sheet(optionsData)
