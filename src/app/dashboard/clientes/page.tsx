@@ -498,15 +498,21 @@ export default function ClientesPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled
+                      disabled={!customer.consent.lgpd_accepted}
+                      onClick={() => alert(`Ver detalhes de ${customer.name} - Funcionalidade em desenvolvimento`)}
+                      className="flex items-center gap-1"
                     >
+                      <Eye className="w-4 h-4" />
                       Ver Detalhes
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled
+                      disabled={!customer.consent.lgpd_accepted}
+                      onClick={() => alert(`Dar selo para ${customer.name} - Funcionalidade em desenvolvimento`)}
+                      className="flex items-center gap-1"
                     >
+                      <Gift className="w-4 h-4" />
                       Dar Selo
                     </Button>
                     <Button
