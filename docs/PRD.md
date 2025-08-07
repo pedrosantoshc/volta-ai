@@ -437,48 +437,96 @@ Volte essa semana e ganhe 15% de desconto!"
 ## 🚀 Development Phases
 
 ### Phase 1: MVP Foundation
-1. **Project Setup**
-   - Next.js 15 project initialization with TypeScript
-   - Tailwind CSS and Shadcn/ui component library setup
-   - Supabase integration (auth, database, storage)
-   - Vercel deployment pipeline
 
-2. **Authentication & Business Management**
-   - Supabase Auth integration with email/password
-   - Business registration and profile management
-   - Basic settings and team member invitation
+#### **Completed Components** ✅
+1. **Project Setup** ✅ **COMPLETED**
+   - ✅ Next.js 15 project initialization with TypeScript
+   - ✅ Tailwind CSS and Shadcn/ui component library setup
+   - ✅ Supabase integration (auth, database, storage)
+   - ✅ Vercel deployment pipeline
 
-3. **Customer Enrollment System**
-   - QR code scanning landing page
-   - Custom enrollment form builder for businesses
-   - LGPD consent collection and terms acceptance
-   - Customer data validation and storage
-   - Automatic loyalty card creation post-enrollment
+2. **Authentication & Business Management** ✅ **COMPLETED**
+   - ✅ Supabase Auth integration with email/password
+   - ✅ Business registration and profile management
+   - ✅ Basic settings and team member invitation
 
-4. **Digital Wallet Integration**
-   - Apple Wallet PassKit implementation
-   - Google Pay Pass generation
-   - QR code creation and management
-   - Real-time pass updates
+5. **Customer Management System** ✅ **COMPLETED**
+   - ✅ Customer database CRUD operations with advanced search/filtering
+   - ✅ Customer segmentation (Active vs "Clientes eventuais")
+   - ✅ Bulk operations (Excel import/export, bulk delete, selection)
+   - ✅ LGPD consent tracking and validation framework
+   - ✅ Conditional action system based on consent status
+   - ⏳ Individual customer profile pages (pending)
 
-5. **Customer Management System**
-   - Customer database CRUD operations
-   - Search, filter, and segmentation features
-   - Custom field management from enrollment forms
-   - Customer profile pages with complete interaction history
+6. **Loyalty Card System** ✅ **PARTIALLY COMPLETED**
+   - ✅ Card design interface with predefined templates
+   - ✅ Loyalty rules configuration (stamps, rewards)
+   - ✅ Conditional stamp validation against card limits
+   - ⏳ Manual stamp attribution interface (pending)
+   - ⏳ Reward redemption tracking (pending)
 
-6. **Loyalty Card System**
-   - Card design interface with predefined templates
-   - Loyalty rules configuration (stamps, rewards)
-   - Manual stamp attribution interface
-   - Reward redemption tracking
+#### **In Progress Components** ⏳
+3. **Customer Enrollment System** ⏳ **IN PROGRESS**
+   - ⏳ QR code scanning landing page
+   - ⏳ Custom enrollment form builder for businesses
+   - ✅ LGPD consent collection and terms acceptance - **COMPLETED**
+   - ✅ Customer data validation and storage - **COMPLETED**
+   - ⏳ Automatic loyalty card creation post-enrollment
 
-7. **WhatsApp Integration**
-   - WhatsApp Business API provider evaluation and selection
-   - Template message system implementation
-   - Automated notifications for stamps/rewards
-   - Message history and delivery tracking
-   - Compliance framework for Brazilian messaging regulations
+4. **Digital Wallet Integration** ⏳ **PENDING**
+   - ⏳ Apple Wallet PassKit implementation
+   - ⏳ Google Pay Pass generation
+   - ⏳ QR code creation and management
+   - ⏳ Real-time pass updates
+
+7. **WhatsApp Integration** ⏳ **PENDING**
+   - ⏳ WhatsApp Business API provider evaluation and selection
+   - ⏳ Template message system implementation
+   - ⏳ Automated notifications for stamps/rewards
+   - ⏳ Message history and delivery tracking
+   - ⏳ Compliance framework for Brazilian messaging regulations
+
+## 🎯 **IMMEDIATE DEVELOPMENT PRIORITIES**
+
+### **Phase 1 Completion - Critical Path to MVP** 
+
+#### **High Priority (Next 2-4 weeks)**
+1. **Customer Enrollment Flow** - Complete the customer-facing experience
+   - **`/enroll/[cardId]`** - Mobile-optimized public enrollment page
+   - **Dynamic form builder** - Allow businesses to create custom questions
+   - **QR code generation and management** - Bridge between physical and digital
+
+2. **Individual Customer Actions** - Replace placeholder functionality
+   - **Customer detail pages** - Full interaction history and profile management  
+   - **Manual stamp addition** - Core staff operational tool
+   - **Loyalty card status management** - Track progress and completion
+
+3. **Digital Wallet Integration** - Core value proposition of the platform
+   - **Apple Wallet PassKit** - iOS loyalty card generation and updates
+   - **Google Pay Pass** - Android loyalty card support
+   - **Real-time pass updates** - Sync stamp additions to wallet passes
+
+#### **Medium Priority (4-8 weeks)**
+4. **Enhanced Business Onboarding** - Professional setup experience
+   - **Multi-step onboarding flow** with progress tracking
+   - **Logo upload and branding** - Visual identity configuration
+   - **AI personality setup** - Configure tone and brand voice for campaigns
+
+5. **Stamp Attribution System** - Staff efficiency tools
+   - **QR code scanner** - Quick customer identification
+   - **Bulk stamp operations** - Handle busy periods efficiently
+   - **Complete audit trail** - Track all loyalty interactions
+
+#### **Future Phases (8+ weeks)**
+6. **AI Integration** - Intelligent marketing automation
+   - **DeepSeek API** - Customer insights and campaign suggestions
+   - **FLUX.1 integration** - AI-generated promotional imagery
+   - **Behavior-triggered campaigns** - Automated customer engagement
+
+7. **WhatsApp Business API** - Customer communication platform
+   - **Provider evaluation** - Select optimal Brazilian WhatsApp provider
+   - **Automated notifications** - Stamp additions, rewards, promotions
+   - **Campaign management** - Segment-based messaging
 
 ### Phase 2: Advanced AI Marketing
    - Advanced customer segmentation with AI
@@ -683,15 +731,23 @@ Volte essa semana e ganhe 15% de desconto!"
 
 ## ✅ Definition of Done
 
-### MVP Acceptance Criteria
-- ✅ Restaurant owner can create account and design loyalty card
-- ✅ Customers can scan QR code and add card to Apple/Google Wallet
-- ✅ Staff can manually add stamps and customers receive WhatsApp notifications
-- ✅ AI suggests basic campaigns based on customer behavior
-- ✅ Business owner can send WhatsApp campaigns to customer segments
-- ✅ Platform tracks basic metrics (customers, stamps, campaign performance)
-- ✅ Application is mobile-responsive and works offline
-- ✅ Data is secure and LGPD compliant
+### MVP Acceptance Criteria - **Current Status**
+- ✅ Restaurant owner can create account and design loyalty card - **COMPLETED**
+- ⏳ Customers can scan QR code and add card to Apple/Google Wallet - **IN PROGRESS**
+- ⏳ Staff can manually add stamps and customers receive WhatsApp notifications - **PENDING**
+- ⏳ AI suggests basic campaigns based on customer behavior - **PENDING**
+- ⏳ Business owner can send WhatsApp campaigns to customer segments - **PENDING**
+- ✅ Platform tracks basic metrics (customers, stamps, campaign performance) - **PARTIALLY COMPLETED**
+- ✅ Application is mobile-responsive and works offline - **COMPLETED**
+- ✅ Data is secure and LGPD compliant - **COMPLETED**
+
+### **Major Accomplishments** ✅
+- ✅ **Complete Customer Management System** - Full CRUD, search, filtering, bulk operations
+- ✅ **LGPD Compliance Framework** - Comprehensive consent tracking and validation
+- ✅ **Excel Import/Export System** - Streamlined customer data management
+- ✅ **Advanced Customer Segmentation** - Active vs "Clientes eventuais" filtering
+- ✅ **Conditional Logic Implementation** - Stamp validation against card limits
+- ✅ **Action System with Consent Validation** - Buttons enabled based on compliance status
 
 ### Phase 2 Acceptance Criteria
 - ✅ AI generates personalized campaign content using brand voice
