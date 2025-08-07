@@ -9,11 +9,22 @@ interface ImportRow {
   tem_cartao?: string
   nome_cartao?: string
   selos_atuais?: string | number
-  cartao_completo?: string
+  // cartao_completo?: string  // REMOVED - now calculated automatically
   total_gasto?: string | number
   total_visitas?: string | number
   ultima_visita?: string
   tags?: string
+}
+
+interface LoyaltyCardWithRules {
+  id: string
+  name: string
+  rules: {
+    stamps_required: number
+    reward_description: string
+    expiry_days?: number
+    max_stamps_per_day?: number
+  }
 }
 
 interface ImportResult {
@@ -125,7 +136,7 @@ export async function POST(request: NextRequest) {
     // Get loyalty cards for validation
     const { data: loyaltyCards, error: cardsError } = await supabase
       .from('loyalty_cards')
-      .select('id, name')
+      .select('id, name, rules')
       .eq('business_id', business.id)
       .eq('is_active', true)
 
@@ -137,7 +148,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const loyaltyCardMap = new Map(loyaltyCards?.map((card: { id: string, name: string }) => [card.name.toLowerCase(), card]) || [])
+    const loyaltyCardMap = new Map(loyaltyCards?.map((card: LoyaltyCardWithRules) => [card.name.toLowerCase(), card]) || [])
 
     // Parse form data to get the uploaded file
     const formData = await request.formData()
@@ -288,7 +299,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Validate loyalty card if specified
-        let loyaltyCardId: string | null = null
+        let loyaltyCard: LoyaltyCardWithRules | null = null
         if (row.tem_cartao?.toString().toUpperCase() === 'SIM') {
           if (!row.nome_cartao) {
             result.errors.push({
@@ -300,7 +311,7 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          const loyaltyCard = loyaltyCardMap.get(row.nome_cartao.toString().toLowerCase()) as { id: string, name: string } | undefined
+          loyaltyCard = loyaltyCardMap.get(row.nome_cartao.toString().toLowerCase()) || null
           if (!loyaltyCard) {
             result.errors.push({
               row: rowNumber,
@@ -310,11 +321,25 @@ export async function POST(request: NextRequest) {
             result.errorCount++
             continue
           }
-          loyaltyCardId = loyaltyCard.id
         }
 
         // Parse numeric fields
         const currentStamps = row.selos_atuais ? parseInt(row.selos_atuais.toString()) : 0
+        
+        // NEW: Validate stamps against card limits
+        if (loyaltyCard && currentStamps > 0) {
+          const maxStamps = loyaltyCard.rules.stamps_required
+          if (currentStamps > maxStamps) {
+            result.errors.push({
+              row: rowNumber,
+              error: `Número de selos (${currentStamps}) não pode ser maior que o máximo do cartão "${loyaltyCard.name}" (${maxStamps})`,
+              data: row
+            })
+            result.errorCount++
+            continue
+          }
+        }
+
         const totalSpent = row.total_gasto ? parseFloat(row.total_gasto.toString()) : null
         const totalVisits = row.total_visitas ? parseInt(row.total_visitas.toString()) : 0
 
@@ -403,24 +428,27 @@ export async function POST(request: NextRequest) {
         }
 
         // Create loyalty card instance if specified
-        if (loyaltyCardId && row.tem_cartao?.toString().toUpperCase() === 'SIM') {
+        if (loyaltyCard && row.tem_cartao?.toString().toUpperCase() === 'SIM') {
           // Check if customer already has this card
           const { data: existingCard } = await supabase
             .from('customer_loyalty_cards')
             .select('id')
             .eq('customer_id', customerId)
-            .eq('loyalty_card_id', loyaltyCardId)
+            .eq('loyalty_card_id', loyaltyCard.id)
             .single()
 
           if (!existingCard) {
-            const qrCode = `${customerId}-${loyaltyCardId}-${Date.now()}`
-            const isCompleted = row.cartao_completo?.toString().toUpperCase() === 'SIM'
+            const qrCode = `${customerId}-${loyaltyCard.id}-${Date.now()}`
+            
+            // NEW: Auto-calculate completion status based on stamps vs card limit
+            const maxStamps = loyaltyCard.rules.stamps_required
+            const isCompleted = currentStamps >= maxStamps
             
             const { error: cardError } = await supabase
               .from('customer_loyalty_cards')
               .insert({
                 customer_id: customerId,
-                loyalty_card_id: loyaltyCardId,
+                loyalty_card_id: loyaltyCard.id,
                 current_stamps: Math.max(currentStamps, 0),
                 total_redeemed: isCompleted ? 1 : 0,
                 qr_code: qrCode,
@@ -433,13 +461,25 @@ export async function POST(request: NextRequest) {
                 warning: `Cliente criado mas cartão fidelidade falhou: ${cardError.message}`,
                 data: row
               })
+            } else if (isCompleted) {
+              // Add info message about auto-completion
+              result.warnings.push({
+                row: rowNumber,
+                warning: `Cartão automaticamente marcado como completo (${currentStamps}/${maxStamps} selos)`,
+                data: row
+              })
             }
           } else {
             // Update existing card
+            const maxStamps = loyaltyCard.rules.stamps_required
+            const isCompleted = currentStamps >= maxStamps
+            
             const { error: updateCardError } = await supabase
               .from('customer_loyalty_cards')
               .update({
-                current_stamps: Math.max(currentStamps, 0)
+                current_stamps: Math.max(currentStamps, 0),
+                status: isCompleted ? 'completed' : 'active',
+                total_redeemed: isCompleted ? 1 : 0
               })
               .eq('id', existingCard.id)
 
@@ -447,6 +487,13 @@ export async function POST(request: NextRequest) {
               result.warnings.push({
                 row: rowNumber,
                 warning: `Cliente criado mas atualização do cartão falhou: ${updateCardError.message}`,
+                data: row
+              })
+            } else if (isCompleted) {
+              // Add info message about auto-completion
+              result.warnings.push({
+                row: rowNumber,
+                warning: `Cartão automaticamente marcado como completo (${currentStamps}/${maxStamps} selos)`,
                 data: row
               })
             }
