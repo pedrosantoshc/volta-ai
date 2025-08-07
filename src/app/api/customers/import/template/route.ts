@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import * as XLSX from 'xlsx'
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Use regular client to get authenticated user session
     const supabase = await createClient(false) // Don't use service role for auth
@@ -106,7 +106,6 @@ export async function GET(request: NextRequest) {
     ]
 
     // Add data validation for dropdowns
-    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:K1000')
     
     // Add validation for tem_cartao column (D)
     for (let row = 2; row <= 1000; row++) {

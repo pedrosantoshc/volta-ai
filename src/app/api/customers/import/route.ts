@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          loyaltyCard = loyaltyCardMap.get(row.nome_cartao.toString().toLowerCase()) || null
+          loyaltyCard = loyaltyCardMap.get(row.nome_cartao.toString().toLowerCase()) ?? null
           if (!loyaltyCard) {
             result.errors.push({
               row: rowNumber,
@@ -361,7 +361,7 @@ export async function POST(request: NextRequest) {
 
         if (existingCustomer) {
           // Update existing customer
-          const { data: updatedCustomer, error: updateError } = await supabase
+          const { error: updateError } = await supabase
             .from('customers')
             .update({
               name: row.nome.toString().trim(),
