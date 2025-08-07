@@ -311,7 +311,8 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          loyaltyCard = loyaltyCardMap.get(row.nome_cartao.toString().toLowerCase()) ?? null
+          const foundCard = loyaltyCardMap.get(row.nome_cartao.toString().toLowerCase()) as LoyaltyCardWithRules | undefined
+          loyaltyCard = foundCard || null
           if (!loyaltyCard) {
             result.errors.push({
               row: rowNumber,
