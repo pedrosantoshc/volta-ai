@@ -17,7 +17,7 @@ interface Customer {
   name: string
   phone: string
   email?: string
-  custom_fields: Record<string, unknown>
+  custom_fields: Record<string, string | number | boolean | string[]>
   enrollment_date: string
   total_visits: number
   total_spent?: number
@@ -523,7 +523,7 @@ export default function ClientesPage() {
                           <div className="mt-1 space-y-1">
                             {Object.entries(customer.custom_fields).map(([key, value]) => (
                               <div key={key} className="text-gray-600">
-                                <span className="font-medium">{key}:</span> {Array.isArray(value) ? value.join(', ') : value}
+                                <span className="font-medium">{key}:</span> {Array.isArray(value) ? value.join(', ') : String(value)}
                               </div>
                             ))}
                           </div>
