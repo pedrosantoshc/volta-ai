@@ -20,6 +20,23 @@ interface ErrorResponse {
   details?: string
 }
 
+interface CustomerLoyaltyCardWithCard {
+  id: string
+  loyalty_card_id: string
+  customer_id: string
+  current_stamps: number
+  total_redeemed: number
+  status: string
+  loyalty_cards: {
+    id: string
+    name: string
+    rules: {
+      stamps_required: number
+    }
+    business_id: string
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user
@@ -112,7 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Filter cards that belong to the business
-    const validCards = customerCards?.filter(card => 
+    const validCards = (customerCards as CustomerLoyaltyCardWithCard[])?.filter((card: CustomerLoyaltyCardWithCard) => 
       card.loyalty_cards?.business_id === businessId
     ) || []
 
