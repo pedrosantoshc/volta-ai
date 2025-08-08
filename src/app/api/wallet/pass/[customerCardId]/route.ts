@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 
-interface RouteParams {
-  customerCardId: string
-}
-
 /**
  * Wallet Pass API Route
  * Phase 1: Returns a placeholder/demo pass
@@ -12,10 +8,10 @@ interface RouteParams {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: RouteParams }
+  { params }: { params: Promise<{ customerCardId: string }> }
 ) {
   try {
-    const { customerCardId } = params
+    const { customerCardId } = await params
 
     if (!customerCardId) {
       return NextResponse.json(
