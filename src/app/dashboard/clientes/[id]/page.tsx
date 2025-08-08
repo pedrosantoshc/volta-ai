@@ -16,7 +16,7 @@ interface CustomerDetail {
   name: string
   phone: string
   email?: string
-  custom_fields: Record<string, any>
+  custom_fields: Record<string, unknown>
   enrollment_date: string
   total_visits: number
   total_spent?: number

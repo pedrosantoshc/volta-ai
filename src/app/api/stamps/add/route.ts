@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     let businessId: string
     try {
       businessId = await getCurrentBusinessId(authSupabase, user.email!)
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Business not found for user' } as ErrorResponse,
         { status: 404 }
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     let body: AddStampsRequest
     try {
       body = await request.json()
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid request body' } as ErrorResponse,
         { status: 400 }
@@ -154,7 +154,6 @@ export async function POST(request: NextRequest) {
 
     // Calculate new stamp count (cap at required amount)
     const newStampCount = Math.min(currentStamps + stamps, stampsRequired)
-    const actualStampsAdded = newStampCount - currentStamps
 
     // Determine new status
     let newStatus = selectedCard.status
@@ -174,7 +173,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the customer loyalty card
-    const { data: updatedCard, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from('customer_loyalty_cards')
       .update({
         current_stamps: newStampCount,
@@ -182,8 +181,6 @@ export async function POST(request: NextRequest) {
         total_redeemed: newTotalRedeemed,
       })
       .eq('id', selectedCard.id)
-      .select()
-      .single()
 
     if (updateError) {
       return NextResponse.json(

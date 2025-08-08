@@ -3,12 +3,11 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
 import { getCurrentBusinessId } from '@/lib/business'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Search, Gift, User, Phone } from 'lucide-react'
+import { ArrowLeft, Search, Gift, Phone } from 'lucide-react'
 import Link from "next/link"
 import GiveStampDialog from '../../clientes/_components/GiveStampDialog'
 
@@ -44,7 +43,6 @@ export default function AddStampsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [giveStampDialog, setGiveStampDialog] = useState<{
     isOpen: boolean
     customer: Customer | null
@@ -260,7 +258,7 @@ export default function AddStampsPage() {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhum cliente encontrado</h3>
             <p className="text-gray-600 text-center mb-6">
-              Não encontramos nenhum cliente com "{searchTerm}". Tente outro termo.
+              Não encontramos nenhum cliente com &ldquo;{searchTerm}&rdquo;. Tente outro termo.
             </p>
             <Button variant="outline" onClick={() => setSearchTerm('')}>
               Limpar Busca
@@ -358,7 +356,7 @@ export default function AddStampsPage() {
           {/* Show total results */}
           {searchTerm && (
             <div className="text-center text-sm text-gray-500 py-4">
-              {filteredCustomers.length} cliente(s) encontrado(s) para "{searchTerm}"
+              {filteredCustomers.length} cliente(s) encontrado(s) para &ldquo;{searchTerm}&rdquo;
             </div>
           )}
         </div>

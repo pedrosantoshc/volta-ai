@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { createClient } from '@/lib/supabase-client'
 import { getCurrentBusinessId } from '@/lib/business'
 import { useRouter } from 'next/navigation'
-import { Trash2, Search, Users, Eye, Gift, CheckSquare, Square } from 'lucide-react'
+import { Trash2, Search, Eye, Gift, CheckSquare, Square } from 'lucide-react'
 import Link from "next/link"
 import GiveStampDialog from './_components/GiveStampDialog'
 
@@ -17,7 +17,7 @@ interface Customer {
   name: string
   phone: string
   email?: string
-  custom_fields: Record<string, any>
+  custom_fields: Record<string, unknown>
   enrollment_date: string
   total_visits: number
   total_spent?: number
@@ -43,7 +43,10 @@ interface CustomerLoyaltyCard {
   loyalty_cards: {
     id: string
     name: string
-    rules: any
+    rules: {
+    stamps_required: number
+    reward_description: string
+  }
   }
 }
 

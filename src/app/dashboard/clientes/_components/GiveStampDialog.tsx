@@ -53,17 +53,13 @@ export default function GiveStampDialog({
   const [success, setSuccess] = useState('')
 
   // Reset form when dialog opens
-  const handleOpen = () => {
+  React.useEffect(() => {
     if (isOpen) {
       setSelectedCardId(cards.length === 1 ? cards[0].id : '')
       setStamps('1')
       setError('')
       setSuccess('')
     }
-  }
-
-  React.useEffect(() => {
-    handleOpen()
   }, [isOpen, cards])
 
   const selectedCard = cards.find(card => card.id === selectedCardId)
