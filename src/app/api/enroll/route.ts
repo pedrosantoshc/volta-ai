@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
+import { generateWalletPassUrl } from '@/lib/wallet'
 
 export async function POST(request: NextRequest) {
   try {
@@ -141,11 +142,13 @@ export async function POST(request: NextRequest) {
       .eq('loyalty_card_id', loyaltyCard.id)
       .single()
 
+    let customerCardId: string
+
     if (!existingCard) {
       // Create customer loyalty card instance
       const qrCode = `${customerId}-${loyaltyCard.id}-${Date.now()}`
       
-      const { error: cardError } = await supabase
+      const { data: newCard, error: cardError } = await supabase
         .from('customer_loyalty_cards')
         .insert({
           customer_id: customerId,
@@ -155,6 +158,8 @@ export async function POST(request: NextRequest) {
           qr_code: qrCode,
           status: 'active'
         })
+        .select()
+        .single()
 
       if (cardError) {
         console.error('Loyalty card creation error:', cardError)
@@ -163,11 +168,33 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         )
       }
+
+      customerCardId = newCard.id
+    } else {
+      customerCardId = existingCard.id
+    }
+
+    // Generate wallet pass URL
+    let walletPassUrl: string | null = null
+    try {
+      walletPassUrl = await generateWalletPassUrl(customerCardId)
+      
+      // Update the customer loyalty card with wallet pass URL
+      await supabase
+        .from('customer_loyalty_cards')
+        .update({ wallet_pass_url: walletPassUrl })
+        .eq('id', customerCardId)
+    } catch (walletError) {
+      console.error('Wallet pass generation error:', walletError)
+      // Don't fail the enrollment if wallet pass generation fails
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Enrollment successful'
+      message: 'Enrollment successful',
+      customer_id: customerId,
+      customer_card_id: customerCardId,
+      wallet_pass_url: walletPassUrl
     })
 
   } catch (error) {

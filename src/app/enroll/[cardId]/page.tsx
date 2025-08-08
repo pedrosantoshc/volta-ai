@@ -65,6 +65,11 @@ export default function CustomerEnrollment() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [enrollmentResult, setEnrollmentResult] = useState<{
+    customer_id: string
+    customer_card_id: string
+    wallet_pass_url?: string
+  } | null>(null)
   const [formData, setFormData] = useState<FormData>({
     name: '',
     phone: '',
@@ -259,6 +264,7 @@ export default function CustomerEnrollment() {
         throw new Error(result.error || 'Enrollment failed')
       }
 
+      setEnrollmentResult(result)
       setSuccess(true)
 
       // TODO: In production, this would:
@@ -342,7 +348,15 @@ export default function CustomerEnrollment() {
                 </ul>
               </div>
               
-              <div className="text-center">
+              <div className="text-center space-y-4">
+                {enrollmentResult?.wallet_pass_url && (
+                  <Button
+                    onClick={() => window.open(enrollmentResult.wallet_pass_url, '_blank')}
+                    className="w-full bg-black hover:bg-gray-800 text-white mb-3"
+                  >
+                    📱 Adicionar à Carteira
+                  </Button>
+                )}
                 <p className="text-sm text-gray-600 mb-4">
                   Mantenha seu telefone por perto para receber as notificações!
                 </p>

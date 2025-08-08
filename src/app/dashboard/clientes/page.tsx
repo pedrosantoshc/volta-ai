@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { createClient } from '@/lib/supabase-client'
+import { getCurrentBusinessId } from '@/lib/business'
 import { useRouter } from 'next/navigation'
 import { Trash2, Search, Users, Eye, Gift, CheckSquare, Square } from 'lucide-react'
 import Link from "next/link"
+import GiveStampDialog from './_components/GiveStampDialog'
 
 interface Customer {
   id: string
@@ -54,6 +56,10 @@ export default function ClientesPage() {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([])
   const [isDeleting, setIsDeleting] = useState(false)
+  const [giveStampDialog, setGiveStampDialog] = useState<{
+    isOpen: boolean
+    customer: Customer | null
+  }>({ isOpen: false, customer: null })
   const router = useRouter()
   const supabase = createClient()
 
@@ -65,6 +71,9 @@ export default function ClientesPage() {
           router.push('/login')
           return
         }
+
+        // Get business ID for the user
+        const businessId = await getCurrentBusinessId(supabase, user.email!)
 
         // Load customers with their loyalty cards
         const { data: customersData, error: customersError } = await supabase
@@ -80,7 +89,7 @@ export default function ClientesPage() {
               )
             )
           `)
-          .eq('business_id', user.id)
+          .eq('business_id', businessId)
           .order('enrollment_date', { ascending: false })
 
         if (customersError) {
@@ -219,6 +228,49 @@ export default function ClientesPage() {
     setSelectedCustomers(prev => 
       prev.length === filteredCustomers.length ? [] : filteredCustomers.map(c => c.id)
     )
+  }
+
+  const handleGiveStamp = (customer: Customer) => {
+    setGiveStampDialog({ isOpen: true, customer })
+  }
+
+  const handleGiveStampSuccess = () => {
+    // Reload customers to get updated data
+    const loadCustomers = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const businessId = await getCurrentBusinessId(supabase, user.email!)
+
+        const { data: customersData, error: customersError } = await supabase
+          .from('customers')
+          .select(`
+            *,
+            loyalty_cards:customer_loyalty_cards (
+              *,
+              loyalty_cards (
+                id,
+                name,
+                rules
+              )
+            )
+          `)
+          .eq('business_id', businessId)
+          .order('enrollment_date', { ascending: false })
+
+        if (customersError) {
+          console.error('Error reloading customers:', customersError)
+          return
+        }
+
+        setCustomers(customersData || [])
+      } catch (err) {
+        console.error('Error reloading customers:', err)
+      }
+    }
+
+    loadCustomers()
   }
 
   if (loading) {
@@ -499,7 +551,7 @@ export default function ClientesPage() {
                       variant="outline"
                       size="sm"
                       disabled={!customer.consent.lgpd_accepted}
-                      onClick={() => alert(`Ver detalhes de ${customer.name} - Funcionalidade em desenvolvimento`)}
+                      onClick={() => router.push(`/dashboard/clientes/${customer.id}`)}
                       className="flex items-center gap-1"
                     >
                       <Eye className="w-4 h-4" />
@@ -509,7 +561,7 @@ export default function ClientesPage() {
                       variant="outline"
                       size="sm"
                       disabled={!customer.consent.lgpd_accepted}
-                      onClick={() => alert(`Dar selo para ${customer.name} - Funcionalidade em desenvolvimento`)}
+                      onClick={() => handleGiveStamp(customer)}
                       className="flex items-center gap-1"
                     >
                       <Gift className="w-4 h-4" />
@@ -580,6 +632,24 @@ export default function ClientesPage() {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Give Stamp Dialog */}
+      {giveStampDialog.customer && (
+        <GiveStampDialog
+          isOpen={giveStampDialog.isOpen}
+          onClose={() => setGiveStampDialog({ isOpen: false, customer: null })}
+          customerId={giveStampDialog.customer.id}
+          customerName={giveStampDialog.customer.name}
+          cards={giveStampDialog.customer.loyalty_cards.map(card => ({
+            id: card.loyalty_card_id,
+            name: card.loyalty_cards.name,
+            current_stamps: card.current_stamps,
+            required: card.loyalty_cards.rules.stamps_required || 10,
+            status: card.status
+          }))}
+          onSuccess={handleGiveStampSuccess}
+        />
       )}
     </div>
   )
