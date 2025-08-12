@@ -429,8 +429,8 @@ export default function CampanhasPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="equals">=</SelectItem>
-                      <SelectItem value="greater_than">></SelectItem>
-                      <SelectItem value="less_than"><</SelectItem>
+                      <SelectItem value="greater_than">&gt;</SelectItem>
+                      <SelectItem value="less_than">&lt;</SelectItem>
                       <SelectItem value="contains">contém</SelectItem>
                       <SelectItem value="in_last_days">nos últimos X dias</SelectItem>
                       <SelectItem value="between">entre</SelectItem>

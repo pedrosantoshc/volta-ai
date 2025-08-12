@@ -477,7 +477,7 @@ export default function SelosPage() {
               🎉 Cartão Completado!
             </DialogTitle>
             <DialogDescription>
-              {cardCompletionDialog.customer?.name} completou o cartão "{cardCompletionDialog.completedCard?.loyalty_card.name}"!
+              {cardCompletionDialog.customer?.name} completou o cartão &quot;{cardCompletionDialog.completedCard?.loyalty_card.name}&quot;!
             </DialogDescription>
           </DialogHeader>
           

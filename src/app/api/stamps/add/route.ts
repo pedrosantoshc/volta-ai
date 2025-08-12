@@ -32,6 +32,9 @@ interface CustomerLoyaltyCardWithCard {
     name: string
     rules: {
       stamps_required: number
+      max_stamps_per_day?: number
+      expiry_days?: number
+      reward_description?: string
     }
     business_id: string
   }
@@ -188,7 +191,7 @@ export async function POST(request: NextRequest) {
       if (stampError) {
         console.error('Error checking daily stamps:', stampError)
       } else {
-        const stampsToday = todayStamps?.reduce((total, transaction) => 
+        const stampsToday = todayStamps?.reduce((total: number, transaction: any) => 
           total + (transaction.stamps_added || 0), 0) || 0
         
         if (stampsToday >= maxStampsPerDay) {

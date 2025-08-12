@@ -270,7 +270,7 @@ export default function CustomerDetailPage() {
         .limit(20)
 
       if (!stampError && stampData) {
-        stampData.forEach((stamp) => {
+        stampData.forEach((stamp: any) => {
           activitiesTimeline.push({
             id: `stamp-${stamp.id}`,
             type: 'stamp',

@@ -99,7 +99,9 @@ export default function Dashboard() {
           totalCustomers: customersCount || 0,
           activeCards: activeCardsCount,
           totalStamps: totalStamps,
-          campaignsSent: 0 // Keep this as 0 for now since campaigns aren't implemented yet
+          campaignsSent: 0, // Keep this as 0 for now since campaigns aren't implemented yet
+          customerGrowth: 0,
+          stampsThisWeek: 0
         })
 
         setHasCards(processedCards.length > 0)

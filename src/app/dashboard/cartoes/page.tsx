@@ -227,8 +227,8 @@ export default function CartoesFidelidade() {
         return
       }
 
-      const activeCustomers = customerCards?.filter(cc => cc.status === 'active' && cc.current_stamps > 0) || []
-      const totalStamps = customerCards?.reduce((sum, cc) => sum + (cc.current_stamps || 0), 0) || 0
+      const activeCustomers = customerCards?.filter((cc: any) => cc.status === 'active' && cc.current_stamps > 0) || []
+      const totalStamps = customerCards?.reduce((sum: number, cc: any) => sum + (cc.current_stamps || 0), 0) || 0
 
       if (activeCustomers.length === 0) {
         // No active customers, can delete directly
@@ -471,7 +471,8 @@ export default function CartoesFidelidade() {
 
       {/* Loyalty Cards Grid */}
       {loyaltyCards.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loyaltyCards.map((card) => (
             <Card key={card.id} className={`relative ${!card.is_active ? 'opacity-75' : ''}`}>
               <CardHeader>
@@ -791,7 +792,7 @@ export default function CartoesFidelidade() {
               <DialogTitle>Excluir Cartão de Fidelidade</DialogTitle>
             </div>
             <DialogDescription>
-              O cartão "{deletionDialog.cardInfo?.card.name}" possui {deletionDialog.cardInfo?.activeCustomersCount} cliente(s) ativo(s) com {deletionDialog.cardInfo?.totalStamps} selo(s) em progresso.
+              O cartão &quot;{deletionDialog.cardInfo?.card.name}&quot; possui {deletionDialog.cardInfo?.activeCustomersCount} cliente(s) ativo(s) com {deletionDialog.cardInfo?.totalStamps} selo(s) em progresso.
             </DialogDescription>
           </DialogHeader>
           
@@ -849,7 +850,7 @@ export default function CartoesFidelidade() {
                   <div>
                     <div className="font-medium text-purple-900">Criar segmento destes clientes</div>
                     <div className="text-sm text-purple-700 mt-1">
-                      Agrupe estes clientes para enviar campanha "programa encerrado"
+                      Agrupe estes clientes para enviar campanha &quot;programa encerrado&quot;
                     </div>
                   </div>
                 </div>
