@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { createClient } from '@/lib/supabase-client'
 import { getCurrentBusinessId } from '@/lib/business'
 import { useRouter } from 'next/navigation'
-import { Trash2, Search, Eye, Gift, CheckSquare, Square } from 'lucide-react'
+import { Trash2, Search, Eye, Gift, CheckSquare, Square, Plus, MessageCircle, CreditCard, Download, Users } from 'lucide-react'
 import Link from "next/link"
 import GiveStampDialog from './_components/GiveStampDialog'
 
@@ -63,6 +63,7 @@ export default function ClientesPage() {
     isOpen: boolean
     customer: Customer | null
   }>({ isOpen: false, customer: null })
+  const [availableLoyaltyCards, setAvailableLoyaltyCards] = useState<{id: string, name: string}[]>([])
   const router = useRouter()
   const supabase = createClient()
 
@@ -77,6 +78,17 @@ export default function ClientesPage() {
 
         // Get business ID for the user
         const businessId = await getCurrentBusinessId(supabase, user.email!)
+
+        // Load available loyalty cards for this business
+        const { data: loyaltyCardsData, error: loyaltyCardsError } = await supabase
+          .from('loyalty_cards')
+          .select('id, name')
+          .eq('business_id', businessId)
+          .eq('is_active', true)
+          
+        if (!loyaltyCardsError && loyaltyCardsData) {
+          setAvailableLoyaltyCards(loyaltyCardsData)
+        }
 
         // Load customers with their loyalty cards
         const { data: customersData, error: customersError } = await supabase
@@ -158,6 +170,81 @@ export default function ClientesPage() {
     return phone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3')
   }
 
+  // Helper functions for customer card status
+  const hasActiveCard = (customer: Customer) => {
+    return customer.loyalty_cards?.some(card => card.status === 'active') || false
+  }
+
+  const hasNoCard = (customer: Customer) => {
+    return !customer.loyalty_cards || customer.loyalty_cards.length === 0
+  }
+
+  const canReceiveStamp = (customer: Customer) => {
+    return hasActiveCard(customer) && customer.consent.lgpd_accepted
+  }
+
+  const canAddCard = (customer: Customer) => {
+    return !hasActiveCard(customer) && customer.consent.lgpd_accepted
+  }
+
+  const handleAddCard = async (customer: Customer) => {
+    if (availableLoyaltyCards.length === 0) {
+      alert('Nenhum cartão de fidelidade ativo encontrado. Crie um cartão primeiro.')
+      return
+    }
+
+    if (availableLoyaltyCards.length === 1) {
+      // Auto-assign single available card
+      await assignCardToCustomer(customer.id, availableLoyaltyCards[0].id)
+    } else {
+      // Show dropdown for multiple cards
+      const selectedCardId = await showCardSelectionDialog(availableLoyaltyCards)
+      if (selectedCardId) {
+        await assignCardToCustomer(customer.id, selectedCardId)
+      }
+    }
+  }
+
+  const assignCardToCustomer = async (customerId: string, loyaltyCardId: string) => {
+    try {
+      const response = await fetch('/api/customers/assign-card', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId,
+          loyaltyCardId
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to assign card')
+      }
+
+      // Reload customers
+      handleGiveStampSuccess()
+      alert('Cartão adicionado com sucesso!')
+    } catch (error) {
+      console.error('Error assigning card:', error)
+      alert('Erro ao adicionar cartão. Tente novamente.')
+    }
+  }
+
+  const showCardSelectionDialog = async (cards: {id: string, name: string}[]): Promise<string | null> => {
+    // Simple prompt for now - can be improved with a proper modal
+    const cardOptions = cards.map((card, index) => `${index + 1}. ${card.name}`).join('\n')
+    const selection = prompt(`Selecione um cartão:\n\n${cardOptions}\n\nDigite o número da opção:`)
+    
+    if (selection) {
+      const index = parseInt(selection) - 1
+      if (index >= 0 && index < cards.length) {
+        return cards[index].id
+      }
+    }
+    return null
+  }
+
   // Delete functionality
   const handleDeleteCustomer = async (customerId: string, customerName: string) => {
     if (!confirm(`Tem certeza que deseja excluir o cliente "${customerName}"? Esta ação não pode ser desfeita.`)) {
@@ -237,6 +324,23 @@ export default function ClientesPage() {
     setGiveStampDialog({ isOpen: true, customer })
   }
 
+  const handleSendMessage = (customer: Customer) => {
+    // TODO: Implement WhatsApp message functionality
+    alert(`Funcionalidade de mensagem para ${customer.name} será implementada em breve!`)
+  }
+
+  const handleBulkAddToCampaign = () => {
+    if (selectedCustomers.length === 0) return
+    // TODO: Implement add to campaign functionality
+    alert(`Adicionar ${selectedCustomers.length} cliente(s) à campanha - Funcionalidade em desenvolvimento`)
+  }
+
+  const handleBulkExport = () => {
+    if (selectedCustomers.length === 0) return
+    // TODO: Implement export functionality
+    alert(`Exportar ${selectedCustomers.length} cliente(s) - Funcionalidade em desenvolvimento`)
+  }
+
   const handleGiveStampSuccess = () => {
     // Reload customers to get updated data
     const loadCustomers = async () => {
@@ -292,7 +396,7 @@ export default function ClientesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${selectedCustomers.length > 0 ? 'pb-24' : ''}`}>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -318,35 +422,35 @@ export default function ClientesPage() {
       {customers.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-purple-600">
+            <CardContent className="p-4 text-center">
+              <div className="text-3xl font-bold text-purple-600 mb-1">
                 {customers.length}
               </div>
-              <p className="text-sm text-gray-600">Total de Clientes</p>
+              <p className="text-sm text-gray-600 font-medium">Total de Clientes</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-green-600">
+            <CardContent className="p-4 text-center">
+              <div className="text-3xl font-bold text-green-600 mb-1">
                 {customers.filter(c => c.loyalty_cards?.some(card => card.status === 'active')).length}
               </div>
-              <p className="text-sm text-gray-600">Clientes Ativos</p>
+              <p className="text-sm text-gray-600 font-medium">Clientes Ativos</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-blue-600">
+            <CardContent className="p-4 text-center">
+              <div className="text-3xl font-bold text-blue-600 mb-1">
                 {customers.reduce((total, customer) => total + getTotalStamps(customer), 0)}
               </div>
-              <p className="text-sm text-gray-600">Selos Ativos</p>
+              <p className="text-sm text-gray-600 font-medium">Selos Ativos</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-orange-600">
+            <CardContent className="p-4 text-center">
+              <div className="text-3xl font-bold text-orange-600 mb-1">
                 {customers.reduce((total, customer) => total + getTotalRedeemed(customer), 0)}
               </div>
-              <p className="text-sm text-gray-600">Resgates Realizados</p>
+              <p className="text-sm text-gray-600 font-medium">Resgates Realizados</p>
             </CardContent>
           </Card>
         </div>
@@ -365,7 +469,7 @@ export default function ClientesPage() {
                 className="w-full pl-10"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <Button
                 variant={selectedFilter === 'all' ? 'default' : 'outline'}
                 onClick={() => setSelectedFilter('all')}
@@ -387,37 +491,65 @@ export default function ClientesPage() {
               >
                 Clientes eventuais ({customers.filter(c => !c.loyalty_cards?.some(card => card.status === 'active')).length})
               </Button>
+              
+              {/* Select All moved to filter row */}
+              {filteredCustomers.length > 0 && (
+                <div className="border-l pl-4 ml-2">
+                  <button
+                    onClick={toggleSelectAll}
+                    className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    {selectedCustomers.length === filteredCustomers.length ? (
+                      <CheckSquare className="w-4 h-4" />
+                    ) : (
+                      <Square className="w-4 h-4" />
+                    )}
+                    {selectedCustomers.length === filteredCustomers.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Bulk Actions */}
-      {filteredCustomers.length > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={toggleSelectAll}
-                  className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-                >
-                  {selectedCustomers.length === filteredCustomers.length ? (
-                    <CheckSquare className="w-4 h-4" />
-                  ) : (
-                    <Square className="w-4 h-4" />
-                  )}
-                  {selectedCustomers.length === filteredCustomers.length ? 'Desmarcar todos' : 'Selecionar todos'}
-                </button>
-                
-                {selectedCustomers.length > 0 && (
-                  <span className="text-sm text-gray-600">
-                    {selectedCustomers.length} cliente(s) selecionado(s)
+      {/* Fixed Bottom Action Bar */}
+      {selectedCustomers.length > 0 && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 px-6 py-4">
+            <div className="flex items-center gap-6">
+              {/* Selection Info */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-purple-600" />
+                  <span className="text-sm font-medium text-gray-900">
+                    {selectedCustomers.length} cliente{selectedCustomers.length > 1 ? 's' : ''} selecionado{selectedCustomers.length > 1 ? 's' : ''}
                   </span>
-                )}
+                </div>
               </div>
               
-              {selectedCustomers.length > 0 && (
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleBulkAddToCampaign}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 text-purple-600 border-purple-300 hover:bg-purple-50"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Adicionar à Campanha
+                </Button>
+                
+                <Button
+                  onClick={handleBulkExport}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 text-blue-600 border-blue-300 hover:bg-blue-50"
+                >
+                  <Download className="w-4 h-4" />
+                  Exportar
+                </Button>
+                
                 <Button
                   onClick={handleBulkDelete}
                   disabled={isDeleting}
@@ -426,12 +558,21 @@ export default function ClientesPage() {
                   className="flex items-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" />
-                  {isDeleting ? 'Excluindo...' : `Excluir ${selectedCustomers.length} cliente(s)`}
+                  {isDeleting ? 'Excluindo...' : 'Excluir'}
                 </Button>
-              )}
+                
+                <Button
+                  onClick={() => setSelectedCustomers([])}
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  Cancelar
+                </Button>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Customers List */}
@@ -531,18 +672,25 @@ export default function ClientesPage() {
                       </div>
                     )}
 
-                    {/* Consent Info */}
+                    {/* Quick Status Indicators */}
                     <div className="mt-3 pt-3 border-t">
-                      <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        <span className={customer.consent.lgpd_accepted ? 'text-green-600' : 'text-red-600'}>
-                          LGPD: {customer.consent.lgpd_accepted ? 'Aceito' : 'Não aceito'}
-                        </span>
-                        <span className={customer.consent.marketing_consent ? 'text-green-600' : 'text-gray-500'}>
-                          Marketing: {customer.consent.marketing_consent ? 'Aceito' : 'Não aceito'}
-                        </span>
-                        <span>
-                          Consentimento: {formatDate(customer.consent.consent_date)}
-                        </span>
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-1">
+                          <div className={`w-2 h-2 rounded-full ${
+                            customer.consent.lgpd_accepted ? 'bg-green-500' : 'bg-red-500'
+                          }`} />
+                          <span className="text-xs text-gray-600">
+                            {customer.consent.lgpd_accepted ? 'Dados OK' : 'Sem consentimento'}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <div className={`w-2 h-2 rounded-full ${
+                            customer.consent.marketing_consent ? 'bg-purple-500' : 'bg-gray-400'
+                          }`} />
+                          <span className="text-xs text-gray-600">
+                            {customer.consent.marketing_consent ? 'WhatsApp OK' : 'WhatsApp não autorizado'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -560,16 +708,52 @@ export default function ClientesPage() {
                       <Eye className="w-4 h-4" />
                       Ver Detalhes
                     </Button>
+                    
+                    {/* Conditional Action: Add Card or Give Stamp */}
+                    {canAddCard(customer) ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddCard(customer)}
+                        className="flex items-center gap-1 text-blue-600 border-blue-300 hover:bg-blue-50"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Adicionar Cartão
+                      </Button>
+                    ) : canReceiveStamp(customer) ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleGiveStamp(customer)}
+                        className="flex items-center gap-1 text-green-600 border-green-300 hover:bg-green-50"
+                      >
+                        <Gift className="w-4 h-4" />
+                        Dar Selo
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled
+                        className="flex items-center gap-1 opacity-50"
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        Sem Cartão
+                      </Button>
+                    )}
+                    
+                    {/* Send Message Action */}
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={!customer.consent.lgpd_accepted}
-                      onClick={() => handleGiveStamp(customer)}
-                      className="flex items-center gap-1"
+                      disabled={!customer.consent.marketing_consent}
+                      onClick={() => handleSendMessage(customer)}
+                      className="flex items-center gap-1 text-purple-600 border-purple-300 hover:bg-purple-50"
                     >
-                      <Gift className="w-4 h-4" />
-                      Dar Selo
+                      <MessageCircle className="w-4 h-4" />
+                      Enviar Mensagem
                     </Button>
+                    
                     <Button
                       onClick={() => handleDeleteCustomer(customer.id, customer.name)}
                       disabled={isDeleting}
@@ -591,9 +775,7 @@ export default function ClientesPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-              </svg>
+              <Users className="w-8 h-8 text-purple-600" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               Nenhum cliente ainda
@@ -602,11 +784,18 @@ export default function ClientesPage() {
               Quando clientes se inscreverem nos seus programas de fidelidade, 
               eles aparecerão aqui. Compartilhe o link dos seus cartões para começar!
             </p>
-            <Button className="gradient-primary text-white" asChild>
-              <Link href="/dashboard/cartoes">
-                Ver Meus Cartões
-              </Link>
-            </Button>
+            <div className="flex gap-3">
+              <Button className="gradient-primary text-white" asChild>
+                <Link href="/dashboard/cartoes">
+                  Ver Meus Cartões
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/dashboard/clientes/importar">
+                  Importar Clientes
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (

@@ -5,10 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { createClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, Plus, QrCode, Users, Award } from 'lucide-react'
+import { Search, Plus, Users, Award, AlertCircle, CheckCircle, History } from 'lucide-react'
 
 interface Customer {
   id: string
@@ -55,6 +63,13 @@ export default function SelosPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [processingStamp, setProcessingStamp] = useState<string | null>(null)
+  const [success, setSuccess] = useState('')
+  const [cardCompletionDialog, setCardCompletionDialog] = useState<{
+    isOpen: boolean
+    customer: Customer | null
+    completedCard: CustomerLoyaltyCard | null
+  }>({ isOpen: false, customer: null, completedCard: null })
   const router = useRouter()
   const supabase = createClient()
 
@@ -140,69 +155,96 @@ export default function SelosPage() {
     customer.phone.includes(searchQuery)
   )
 
-  const addStamp = async (customerLoyaltyCardId: string, customerId: string) => {
+  const addStamp = async (customerLoyaltyCardId: string, customerId: string, cardIndex: number, customerIndex: number) => {
+    setProcessingStamp(customerLoyaltyCardId)
+    setError('')
+    setSuccess('')
+    
     try {
-      // Add stamp transaction
-      const { error: transactionError } = await supabase
-        .from('stamp_transactions')
-        .insert({
-          customer_loyalty_card_id: customerLoyaltyCardId,
-          stamps_added: 1,
-          transaction_type: 'manual',
-          notes: 'Selo adicionado manualmente'
-        })
-
-      if (transactionError) {
-        console.error('Error adding stamp transaction:', transactionError)
-        return
-      }
-
-      // Update customer loyalty card
-      const { data: currentCard, error: fetchError } = await supabase
-        .from('customer_loyalty_cards')
-        .select('current_stamps, loyalty_card:loyalty_cards(rules)')
-        .eq('id', customerLoyaltyCardId)
-        .single()
-
-      if (fetchError) {
-        console.error('Error fetching current card:', fetchError)
-        return
-      }
-
-      const newStamps = (currentCard.current_stamps || 0) + 1
-      const requiredStamps = currentCard.loyalty_card.rules?.stamps_required || 10
-      const newStatus = newStamps >= requiredStamps ? 'completed' : 'active'
-
-      const { error: updateError } = await supabase
-        .from('customer_loyalty_cards')
-        .update({ 
+      // Get current card data for validation
+      const customer = customers[customerIndex]
+      const card = customer.customer_loyalty_cards[cardIndex]
+      const requiredStamps = card.loyalty_card.rules.stamps_required
+      const currentStamps = card.current_stamps
+      
+      // Optimistic UI update
+      const newStamps = currentStamps + 1
+      const willComplete = newStamps >= requiredStamps
+      const newStatus = willComplete ? 'completed' : 'active'
+      
+      setCustomers(prevCustomers => {
+        const updatedCustomers = [...prevCustomers]
+        const updatedCustomer = { ...updatedCustomers[customerIndex] }
+        const updatedCards = [...updatedCustomer.customer_loyalty_cards]
+        updatedCards[cardIndex] = {
+          ...updatedCards[cardIndex],
           current_stamps: newStamps,
           status: newStatus
+        }
+        updatedCustomer.customer_loyalty_cards = updatedCards
+        updatedCustomer.total_visits = updatedCustomer.total_visits + 1
+        updatedCustomer.last_visit = new Date().toISOString()
+        updatedCustomers[customerIndex] = updatedCustomer
+        return updatedCustomers
+      })
+      
+      // Call API to add stamp
+      const response = await fetch('/api/stamps/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customer_id: customerId,
+          loyalty_card_id: card.loyalty_card.id,
+          stamps: 1
         })
-        .eq('id', customerLoyaltyCardId)
-
-      if (updateError) {
-        console.error('Error updating card:', updateError)
-        return
+      })
+      
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to add stamp')
       }
-
-      // Update customer visit count and last visit
-      const { error: customerUpdateError } = await supabase
-        .from('customers')
-        .update({
-          total_visits: supabase.raw('total_visits + 1'),
-          last_visit: new Date().toISOString()
+      
+      setSuccess(result.message || 'Selo adicionado com sucesso!')
+      
+      // If card was completed, show completion dialog
+      if (willComplete) {
+        setCardCompletionDialog({
+          isOpen: true,
+          customer: customer,
+          completedCard: card
         })
-        .eq('id', customerId)
-
-      if (customerUpdateError) {
-        console.error('Error updating customer:', customerUpdateError)
       }
-
-      // Refresh data
-      window.location.reload()
-    } catch (err) {
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000)
+      
+    } catch (err: any) {
       console.error('Error adding stamp:', err)
+      setError(err.message || 'Erro ao adicionar selo. Tente novamente.')
+      
+      // Revert optimistic update on error
+      const customer = customers[customerIndex]
+      const card = customer.customer_loyalty_cards[cardIndex]
+      
+      setCustomers(prevCustomers => {
+        const revertedCustomers = [...prevCustomers]
+        const revertedCustomer = { ...revertedCustomers[customerIndex] }
+        const revertedCards = [...revertedCustomer.customer_loyalty_cards]
+        revertedCards[cardIndex] = {
+          ...revertedCards[cardIndex],
+          current_stamps: card.current_stamps - 1,
+          status: card.current_stamps - 1 >= card.loyalty_card.rules.stamps_required ? 'completed' : 'active'
+        }
+        revertedCustomer.customer_loyalty_cards = revertedCards
+        revertedCustomer.total_visits = Math.max(0, revertedCustomer.total_visits - 1)
+        revertedCustomers[customerIndex] = revertedCustomer
+        return revertedCustomers
+      })
+    } finally {
+      setProcessingStamp(null)
     }
   }
 
@@ -230,14 +272,9 @@ export default function SelosPage() {
           <p className="text-gray-600">Adicione selos aos cartões de fidelidade dos seus clientes</p>
         </div>
         <div className="flex gap-2">
-          <Button className="gradient-primary text-white" asChild>
-            <Link href="/dashboard/selos/escaneamento">
-              <QrCode className="w-4 h-4 mr-2" />
-              Escanear QR
-            </Link>
-          </Button>
           <Button variant="outline" asChild>
             <Link href="/dashboard/selos/historico">
+              <History className="w-4 h-4 mr-2" />
               Histórico
             </Link>
           </Button>
@@ -245,8 +282,16 @@ export default function SelosPage() {
       </div>
 
       {error && (
-        <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+        <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-md">
+          <AlertCircle className="w-4 h-4" />
           {error}
+        </div>
+      )}
+      
+      {success && (
+        <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 p-3 rounded-md">
+          <CheckCircle className="w-4 h-4" />
+          {success}
         </div>
       )}
 
@@ -312,7 +357,7 @@ export default function SelosPage() {
 
       {/* Customer List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredCustomers.map((customer) => (
+        {filteredCustomers.map((customer, customerIndex) => (
           <Card key={customer.id}>
             <CardHeader>
               <div className="flex justify-between items-start">
@@ -330,7 +375,7 @@ export default function SelosPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {customer.customer_loyalty_cards.map((card) => (
+              {customer.customer_loyalty_cards.map((card, cardIndex) => (
                 <div key={card.id} className="border rounded-lg p-3">
                   <div className="flex justify-between items-center mb-2">
                     <h4 className="text-sm font-medium">{card.loyalty_card.name}</h4>
@@ -368,10 +413,11 @@ export default function SelosPage() {
                     {card.status === 'active' && (
                       <Button
                         size="sm"
-                        onClick={() => addStamp(card.id, customer.id)}
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        disabled={processingStamp === card.id}
+                        onClick={() => addStamp(card.id, customer.id, cardIndex, customerIndex)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
                       >
-                        + Selo
+                        {processingStamp === card.id ? 'Adicionando...' : '+ Selo'}
                       </Button>
                     )}
                     
@@ -419,6 +465,49 @@ export default function SelosPage() {
           </CardContent>
         </Card>
       )}
+      
+      {/* Card Completion Dialog */}
+      <Dialog 
+        open={cardCompletionDialog.isOpen} 
+        onOpenChange={(open) => !open && setCardCompletionDialog({ isOpen: false, customer: null, completedCard: null })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              🎉 Cartão Completado!
+            </DialogTitle>
+            <DialogDescription>
+              {cardCompletionDialog.customer?.name} completou o cartão "{cardCompletionDialog.completedCard?.loyalty_card.name}"!
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h4 className="font-medium text-green-900 mb-2">Recompensa disponível:</h4>
+              <p className="text-green-800">{cardCompletionDialog.completedCard?.loyalty_card.rules.reward_description}</p>
+            </div>
+          </div>
+          
+          <DialogFooter className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setCardCompletionDialog({ isOpen: false, customer: null, completedCard: null })}
+            >
+              Fechar
+            </Button>
+            <Button 
+              className="gradient-primary text-white"
+              onClick={() => {
+                // TODO: Implement new card creation
+                alert('Funcionalidade de criar novo cartão será implementada em breve!')
+                setCardCompletionDialog({ isOpen: false, customer: null, completedCard: null })
+              }}
+            >
+              Criar Novo Cartão
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

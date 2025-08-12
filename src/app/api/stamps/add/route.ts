@@ -168,6 +168,37 @@ export async function POST(request: NextRequest) {
     // Get card rules
     const stampsRequired = selectedCard.loyalty_cards.rules.stamps_required
     const currentStamps = selectedCard.current_stamps || 0
+    const maxStampsPerDay = selectedCard.loyalty_cards.rules.max_stamps_per_day
+
+    // Server-side stamp limit enforcement
+    if (maxStampsPerDay && maxStampsPerDay > 0) {
+      // Check stamps added today
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+
+      const { data: todayStamps, error: stampError } = await supabase
+        .from('stamp_transactions')
+        .select('stamps_added')
+        .eq('customer_loyalty_card_id', selectedCard.id)
+        .gte('created_at', today.toISOString())
+        .lt('created_at', tomorrow.toISOString())
+
+      if (stampError) {
+        console.error('Error checking daily stamps:', stampError)
+      } else {
+        const stampsToday = todayStamps?.reduce((total, transaction) => 
+          total + (transaction.stamps_added || 0), 0) || 0
+        
+        if (stampsToday >= maxStampsPerDay) {
+          return NextResponse.json(
+            { error: `Limite diário de ${maxStampsPerDay} selo(s) atingido` } as ErrorResponse,
+            { status: 400 }
+          )
+        }
+      }
+    }
 
     // Calculate new stamp count (cap at required amount)
     const newStampCount = Math.min(currentStamps + stamps, stampsRequired)
@@ -189,6 +220,23 @@ export async function POST(request: NextRequest) {
       newStatus = 'active'
     }
 
+    // Add stamp transaction record
+    const { error: transactionError } = await supabase
+      .from('stamp_transactions')
+      .insert({
+        customer_loyalty_card_id: selectedCard.id,
+        stamps_added: stamps,
+        transaction_type: 'manual',
+        notes: 'Selo adicionado manualmente via dashboard'
+      })
+
+    if (transactionError) {
+      return NextResponse.json(
+        { error: 'Failed to create stamp transaction', details: transactionError.message } as ErrorResponse,
+        { status: 500 }
+      )
+    }
+
     // Update the customer loyalty card
     const { error: updateError } = await supabase
       .from('customer_loyalty_cards')
@@ -198,6 +246,20 @@ export async function POST(request: NextRequest) {
         total_redeemed: newTotalRedeemed,
       })
       .eq('id', selectedCard.id)
+
+    // Update customer visit count and last visit
+    const { error: customerUpdateError } = await supabase
+      .from('customers')
+      .update({
+        total_visits: supabase.raw('total_visits + 1'),
+        last_visit: new Date().toISOString()
+      })
+      .eq('id', customer_id)
+
+    if (customerUpdateError) {
+      console.error('Error updating customer:', customerUpdateError)
+      // Don't fail the request for this error
+    }
 
     if (updateError) {
       return NextResponse.json(

@@ -7,7 +7,7 @@ import { getCurrentBusinessId } from '@/lib/business'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Gift, Edit, Trash2, Calendar, Phone, Mail, Shield, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Gift, Edit, Trash2, Calendar, Phone, Mail, Shield, ShieldCheck, Activity, Star, CheckCircle } from 'lucide-react'
 import Link from "next/link"
 import GiveStampDialog from '../_components/GiveStampDialog'
 
@@ -30,6 +30,15 @@ interface CustomerDetail {
     consent_source?: string
   }
   customer_loyalty_cards: CustomerLoyaltyCardDetail[]
+}
+
+interface ActivityItem {
+  id: string
+  type: 'enrollment' | 'stamp' | 'redemption' | 'card_completed'
+  description: string
+  date: string
+  icon: any
+  color: string
 }
 
 interface CustomerLoyaltyCardDetail {
@@ -55,6 +64,7 @@ interface CustomerLoyaltyCardDetail {
 
 export default function CustomerDetailPage() {
   const [customer, setCustomer] = useState<CustomerDetail | null>(null)
+  const [activities, setActivities] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [giveStampDialog, setGiveStampDialog] = useState<{
@@ -109,6 +119,10 @@ export default function CustomerDetailPage() {
         }
 
         setCustomer(customerData)
+        
+        // Load customer activities
+        await loadCustomerActivities(businessId, customerId)
+        
       } catch (err) {
         console.error('Unexpected error:', err)
         setError('Erro inesperado ao carregar dados do cliente.')
@@ -159,6 +173,9 @@ export default function CustomerDetailPage() {
       }
 
       setCustomer(customerData)
+      
+      // Reload activities
+      await loadCustomerActivities(businessId, customerId)
     } catch (err) {
       console.error('Error reloading customer:', err)
     }
@@ -217,6 +234,75 @@ export default function CustomerDetailPage() {
         return 'Expirado'
       default:
         return 'Inativo'
+    }
+  }
+
+  const loadCustomerActivities = async (businessId: string, customerId: string) => {
+    try {
+      // Create timeline from different sources
+      const activitiesTimeline: ActivityItem[] = []
+      
+      // Add enrollment activity
+      if (customer) {
+        activitiesTimeline.push({
+          id: `enrollment-${customer.id}`,
+          type: 'enrollment',
+          description: `${customer.name} se inscreveu no programa de fidelidade`,
+          date: customer.enrollment_date,
+          icon: CheckCircle,
+          color: 'text-green-600'
+        })
+      }
+
+      // Load stamp transactions
+      const { data: stampData, error: stampError } = await supabase
+        .from('stamp_transactions')
+        .select(`
+          *,
+          customer_loyalty_cards (
+            loyalty_cards (
+              name
+            )
+          )
+        `)
+        .eq('customer_loyalty_cards.customer_id', customerId)
+        .order('created_at', { ascending: false })
+        .limit(20)
+
+      if (!stampError && stampData) {
+        stampData.forEach((stamp) => {
+          activitiesTimeline.push({
+            id: `stamp-${stamp.id}`,
+            type: 'stamp',
+            description: `Recebeu ${stamp.stamps_added} selo(s) em ${stamp.customer_loyalty_cards?.loyalty_cards?.name || 'Cartão'}`,
+            date: stamp.created_at,
+            icon: Star,
+            color: 'text-purple-600'
+          })
+        })
+      }
+
+      // Add card completion activities (simulated for now)
+      customer?.customer_loyalty_cards.forEach((card) => {
+        if (card.status === 'completed') {
+          activitiesTimeline.push({
+            id: `completion-${card.id}`,
+            type: 'card_completed',
+            description: `Completou o cartão "${card.loyalty_cards.name}" e ganhou: ${card.loyalty_cards.rules.reward_description}`,
+            date: card.created_at, // This should ideally be completion date
+            icon: Gift,
+            color: 'text-orange-600'
+          })
+        }
+      })
+
+      // Sort by date (most recent first)
+      activitiesTimeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      
+      setActivities(activitiesTimeline.slice(0, 10)) // Limit to 10 most recent
+      
+    } catch (error) {
+      console.error('Error loading customer activities:', error)
     }
   }
 
@@ -493,21 +579,68 @@ export default function CustomerDetailPage() {
         </CardContent>
       </Card>
 
-      {/* History Placeholder */}
+      {/* Customer Activity Timeline */}
       <Card>
         <CardHeader>
-          <CardTitle>Histórico de Atividades</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5" />
+            Histórico de Atividades
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-8 h-8 text-gray-400" />
+          {activities.length > 0 ? (
+            <div className="space-y-4">
+              {activities.map((activity, index) => {
+                const IconComponent = activity.icon
+                return (
+                  <div key={activity.id} className="flex items-start space-x-3 relative">
+                    {/* Timeline line */}
+                    {index < activities.length - 1 && (
+                      <div className="absolute left-4 top-8 w-px h-12 bg-gray-200" />
+                    )}
+                    
+                    {/* Icon */}
+                    <div className={`w-8 h-8 rounded-full bg-white border-2 flex items-center justify-center z-10 ${
+                      activity.type === 'enrollment' ? 'border-green-300 bg-green-50' :
+                      activity.type === 'stamp' ? 'border-purple-300 bg-purple-50' :
+                      activity.type === 'card_completed' ? 'border-orange-300 bg-orange-50' :
+                      'border-gray-300 bg-gray-50'
+                    }`}>
+                      <IconComponent className={`w-4 h-4 ${activity.color}`} />
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-gray-900">
+                        {activity.description}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {formatDateTime(activity.date)}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              
+              {activities.length >= 10 && (
+                <div className="text-center pt-4">
+                  <Button variant="outline" size="sm">
+                    Ver mais atividades
+                  </Button>
+                </div>
+              )}
             </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Histórico em desenvolvimento</h3>
-            <p className="text-gray-600">
-              Em breve você poderá ver todas as transações e atividades do cliente aqui.
-            </p>
-          </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Activity className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">Nenhuma atividade ainda</h3>
+              <p className="text-gray-600">
+                As atividades do cliente aparecerão aqui conforme ele interage com o programa de fidelidade.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
