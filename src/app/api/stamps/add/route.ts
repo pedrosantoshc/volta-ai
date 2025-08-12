@@ -57,9 +57,13 @@ export async function POST(request: NextRequest) {
     let businessId: string
     try {
       businessId = await getCurrentBusinessId(authSupabase, user.email!)
-    } catch {
+    } catch (error) {
+      console.error('Business lookup error:', error)
       return NextResponse.json(
-        { error: 'Business not found for user' } as ErrorResponse,
+        { 
+          error: 'Business not found for user', 
+          details: error instanceof Error ? error.message : 'Unknown error' 
+        } as ErrorResponse,
         { status: 404 }
       )
     }
@@ -224,6 +228,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Add stamp transaction record
+    console.log('Creating stamp transaction for card:', selectedCard.id, 'stamps:', stamps)
     const { error: transactionError } = await supabase
       .from('stamp_transactions')
       .insert({
@@ -234,6 +239,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (transactionError) {
+      console.error('Stamp transaction error:', transactionError)
       return NextResponse.json(
         { error: 'Failed to create stamp transaction', details: transactionError.message } as ErrorResponse,
         { status: 500 }
