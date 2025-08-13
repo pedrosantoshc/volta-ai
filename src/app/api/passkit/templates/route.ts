@@ -307,7 +307,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Analyze template status
-    const templateStatus = loyaltyCards?.map(card => ({
+    const templateStatus = loyaltyCards?.map((card: { id: string; name: string; wallet_enabled: boolean }) => ({
       loyaltyCardId: card.id,
       loyaltyCardName: card.name,
       walletEnabled: card.wallet_enabled,
