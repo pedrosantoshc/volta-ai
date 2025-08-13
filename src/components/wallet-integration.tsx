@@ -125,7 +125,7 @@ export default function WalletIntegration({
     if (!walletStatus.walletData?.qr_code) return
     
     // In a real implementation, you'd generate and download an actual QR code image
-    const qrData = walletStatus.walletData.qr_code
+    const qrData = walletStatus.walletData?.qr_code
     const blob = new Blob([`QR Code: ${qrData}`], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -203,9 +203,9 @@ export default function WalletIntegration({
 
           <div className="space-y-3">
             {/* Apple Wallet Button */}
-            {device === 'ios' && walletStatus.walletData.wallet_pass_url && (
+            {device === 'ios' && walletStatus.walletData?.wallet_pass_url && (
               <Button
-                onClick={() => openWallet(walletStatus.walletData.wallet_pass_url)}
+                onClick={() => walletStatus.walletData?.wallet_pass_url && openWallet(walletStatus.walletData.wallet_pass_url)}
                 className="w-full bg-black hover:bg-gray-800 text-white flex items-center gap-2"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -216,9 +216,9 @@ export default function WalletIntegration({
             )}
 
             {/* Google Pay Button */}
-            {device === 'android' && walletStatus.walletData.google_pay_url && (
+            {device === 'android' && walletStatus.walletData?.google_pay_url && (
               <Button
-                onClick={() => openWallet(walletStatus.walletData.google_pay_url)}
+                onClick={() => walletStatus.walletData?.google_pay_url && openWallet(walletStatus.walletData.google_pay_url)}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -229,20 +229,20 @@ export default function WalletIntegration({
             )}
 
             {/* Universal wallet button for unknown devices */}
-            {device === 'unknown' && (walletStatus.walletData.wallet_pass_url || walletStatus.walletData.google_pay_url) && (
+            {device === 'unknown' && (walletStatus.walletData?.wallet_pass_url || walletStatus.walletData?.google_pay_url) && (
               <div className="grid grid-cols-2 gap-2">
-                {walletStatus.walletData.wallet_pass_url && (
+                {walletStatus.walletData?.wallet_pass_url && (
                   <Button
-                    onClick={() => openWallet(walletStatus.walletData.wallet_pass_url)}
+                    onClick={() => walletStatus.walletData?.wallet_pass_url && openWallet(walletStatus.walletData.wallet_pass_url)}
                     size="sm"
                     className="bg-black hover:bg-gray-800 text-white"
                   >
                     Apple Wallet
                   </Button>
                 )}
-                {walletStatus.walletData.google_pay_url && (
+                {walletStatus.walletData?.google_pay_url && (
                   <Button
-                    onClick={() => openWallet(walletStatus.walletData.google_pay_url)}
+                    onClick={() => walletStatus.walletData?.google_pay_url && openWallet(walletStatus.walletData.google_pay_url)}
                     size="sm"
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
@@ -264,7 +264,7 @@ export default function WalletIntegration({
                 {showQR ? 'Ocultar QR Code' : 'Mostrar QR Code'}
               </Button>
               
-              {showQR && walletStatus.walletData.qr_code && (
+              {showQR && walletStatus.walletData?.qr_code && (
                 <div className="mt-3 text-center space-y-2">
                   <div className="bg-white p-4 rounded-lg border inline-block">
                     <div className="w-32 h-32 bg-gray-100 rounded flex items-center justify-center">
@@ -273,7 +273,7 @@ export default function WalletIntegration({
                     </div>
                   </div>
                   <div className="text-xs text-green-700">
-                    Código: {walletStatus.walletData.qr_code.slice(0, 20)}...
+                    Código: {walletStatus.walletData?.qr_code?.slice(0, 20)}...
                   </div>
                   <Button
                     onClick={downloadQR}

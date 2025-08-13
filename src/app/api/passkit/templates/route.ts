@@ -307,7 +307,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Analyze template status
-    const templateStatus = loyaltyCards?.map((card: { id: string; name: string; wallet_enabled: boolean }) => ({
+    const templateStatus = loyaltyCards?.map((card: { 
+      id: string; 
+      name: string; 
+      wallet_enabled: boolean; 
+      design?: { passkit_template_id?: string } 
+    }) => ({
       loyaltyCardId: card.id,
       loyaltyCardName: card.name,
       walletEnabled: card.wallet_enabled,
@@ -319,8 +324,8 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         totalCards: loyaltyCards?.length || 0,
-        cardsWithTemplates: templateStatus.filter(card => card.hasTemplate).length,
-        cardsWithoutTemplates: templateStatus.filter(card => !card.hasTemplate).length,
+        cardsWithTemplates: templateStatus.filter((card: { hasTemplate: boolean }) => card.hasTemplate).length,
+        cardsWithoutTemplates: templateStatus.filter((card: { hasTemplate: boolean }) => !card.hasTemplate).length,
         cards: templateStatus
       }
     }, { status: 200 })
