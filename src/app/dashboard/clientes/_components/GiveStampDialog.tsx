@@ -23,7 +23,7 @@ interface GiveStampDialogProps {
   customerId: string
   customerName: string
   cards: LoyaltyCardInfo[]
-  onSuccess: () => void
+  onSuccess: (updatedCard?: { id: string; current_stamps: number; status: string }) => void
 }
 
 interface AddStampsResponse {
@@ -51,6 +51,10 @@ export default function GiveStampDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [optimisticUpdate, setOptimisticUpdate] = useState<{
+    cardId: string
+    newStampCount: number
+  } | null>(null)
 
   // Reset form when dialog opens
   React.useEffect(() => {
@@ -59,11 +63,16 @@ export default function GiveStampDialog({
       setStamps('1')
       setError('')
       setSuccess('')
+      setOptimisticUpdate(null)
     }
   }, [isOpen, cards])
 
+  // Use optimistic update if available
   const selectedCard = cards.find(card => card.id === selectedCardId)
-  const maxStamps = selectedCard ? selectedCard.required - selectedCard.current_stamps : 0
+  const currentStamps = optimisticUpdate && optimisticUpdate.cardId === selectedCardId 
+    ? optimisticUpdate.newStampCount 
+    : selectedCard?.current_stamps || 0
+  const maxStamps = selectedCard ? selectedCard.required - currentStamps : 0
   const stampsNumber = parseInt(stamps) || 0
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,6 +98,13 @@ export default function GiveStampDialog({
 
     setIsLoading(true)
 
+    // Optimistic update: immediately show the stamps being added
+    const optimisticStampCount = currentStamps + stampsNumber
+    setOptimisticUpdate({
+      cardId: selectedCardId,
+      newStampCount: optimisticStampCount
+    })
+
     try {
       const response = await fetch('/api/stamps/add', {
         method: 'POST',
@@ -106,11 +122,19 @@ export default function GiveStampDialog({
 
       if (!response.ok) {
         const errorData = data as ApiErrorResponse
+        // Revert optimistic update on error
+        setOptimisticUpdate(null)
         setError(errorData.error || 'Erro ao adicionar selos')
         return
       }
 
       const successData = data as AddStampsResponse
+      
+      // Update optimistic state with server response
+      setOptimisticUpdate({
+        cardId: selectedCardId,
+        newStampCount: successData.current_stamps
+      })
       
       // Show success message
       if (successData.status === 'completed') {
@@ -121,12 +145,18 @@ export default function GiveStampDialog({
 
       // Wait a moment to show success message, then close and refresh
       setTimeout(() => {
-        onSuccess()
+        onSuccess({
+          id: selectedCardId,
+          current_stamps: successData.current_stamps,
+          status: successData.status
+        })
         onClose()
       }, 1500)
 
     } catch (error) {
       console.error('Error adding stamps:', error)
+      // Revert optimistic update on error
+      setOptimisticUpdate(null)
       setError('Erro de conexão. Tente novamente.')
     } finally {
       setIsLoading(false)
@@ -222,19 +252,22 @@ export default function GiveStampDialog({
                 <div className="flex items-center justify-between text-sm">
                   <span>Progresso atual</span>
                   <span className="text-gray-600">
-                    {selectedCard.current_stamps} de {selectedCard.required} selos
+                    {currentStamps} de {selectedCard.required} selos
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
-                    className="bg-purple-600 h-2 rounded-full transition-all"
+                    className="bg-purple-600 h-2 rounded-full transition-all duration-300"
                     style={{
-                      width: `${Math.min((selectedCard.current_stamps / selectedCard.required) * 100, 100)}%`
+                      width: `${Math.min((currentStamps / selectedCard.required) * 100, 100)}%`
                     }}
                   ></div>
                 </div>
                 <p className="text-xs text-gray-500">
-                  {Math.min((selectedCard.current_stamps / selectedCard.required) * 100, 100).toFixed(1)}% completo
+                  {Math.min((currentStamps / selectedCard.required) * 100, 100).toFixed(1)}% completo
+                  {optimisticUpdate && optimisticUpdate.cardId === selectedCardId && (
+                    <span className="text-purple-600 font-medium"> (atualizando...)</span>
+                  )}
                 </p>
               </div>
             )}
@@ -267,12 +300,12 @@ export default function GiveStampDialog({
               <div className="p-3 bg-blue-50 rounded-md">
                 <h4 className="font-medium text-blue-900 mb-2">Prévia</h4>
                 <div className="space-y-1 text-sm text-blue-800">
-                  <div>Selos atuais: {selectedCard.current_stamps}</div>
+                  <div>Selos atuais: {currentStamps}</div>
                   <div>Selos a adicionar: +{stampsNumber}</div>
                   <div className="font-medium">
-                    Novo total: {selectedCard.current_stamps + stampsNumber}
+                    Novo total: {currentStamps + stampsNumber}
                   </div>
-                  {selectedCard.current_stamps + stampsNumber >= selectedCard.required && (
+                  {currentStamps + stampsNumber >= selectedCard.required && (
                     <div className="flex items-center gap-1 text-green-700 font-medium">
                       <CheckCircle className="w-4 h-4" />
                       Cartão será completado! 🎉

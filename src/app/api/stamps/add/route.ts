@@ -257,16 +257,28 @@ export async function POST(request: NextRequest) {
       .eq('id', selectedCard.id)
 
     // Update customer visit count and last visit
-    const { error: customerUpdateError } = await supabase
+    // First get current visit count, then increment it
+    const { data: currentCustomer, error: customerFetchError } = await supabase
       .from('customers')
-      .update({
-        total_visits: supabase.raw('total_visits + 1'),
-        last_visit: new Date().toISOString()
-      })
+      .select('total_visits')
       .eq('id', customer_id)
+      .single()
 
-    if (customerUpdateError) {
-      console.error('Error updating customer:', customerUpdateError)
+    if (!customerFetchError && currentCustomer) {
+      const { error: customerUpdateError } = await supabase
+        .from('customers')
+        .update({
+          total_visits: (currentCustomer.total_visits || 0) + 1,
+          last_visit: new Date().toISOString()
+        })
+        .eq('id', customer_id)
+
+      if (customerUpdateError) {
+        console.error('Error updating customer:', customerUpdateError)
+        // Don't fail the request for this error - it's not critical
+      }
+    } else {
+      console.error('Error fetching customer for visit update:', customerFetchError)
       // Don't fail the request for this error
     }
 
@@ -284,6 +296,14 @@ export async function POST(request: NextRequest) {
       status: newStatus,
       total_redeemed: newTotalRedeemed
     }
+
+    console.log('Stamp addition successful:', {
+      customer_id,
+      selectedCard: selectedCard.id,
+      stamps_added: stamps,
+      new_total: newStampCount,
+      new_status: newStatus
+    })
 
     return NextResponse.json(response, { status: 200 })
 

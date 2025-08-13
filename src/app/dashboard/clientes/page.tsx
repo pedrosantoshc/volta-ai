@@ -341,43 +341,68 @@ export default function ClientesPage() {
     alert(`Exportar ${selectedCustomers.length} cliente(s) - Funcionalidade em desenvolvimento`)
   }
 
-  const handleGiveStampSuccess = () => {
-    // Reload customers to get updated data
-    const loadCustomers = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+  const handleGiveStampSuccess = (updatedCard?: { id: string; current_stamps: number; status: string }) => {
+    if (updatedCard) {
+      // Update specific customer's card data without full reload
+      setCustomers(prevCustomers => 
+        prevCustomers.map(customer => ({
+          ...customer,
+          loyalty_cards: customer.loyalty_cards.map(loyaltyCard => 
+            loyaltyCard.id === updatedCard.id
+              ? {
+                  ...loyaltyCard,
+                  current_stamps: updatedCard.current_stamps,
+                  status: updatedCard.status
+                }
+              : loyaltyCard
+          ),
+          // Also increment total_visits for real-time stats update
+          total_visits: customer.loyalty_cards.some(card => card.id === updatedCard.id) 
+            ? (customer.total_visits || 0) + 1 
+            : customer.total_visits,
+          last_visit: customer.loyalty_cards.some(card => card.id === updatedCard.id)
+            ? new Date().toISOString()
+            : customer.last_visit
+        }))
+      )
+    } else {
+      // Fallback to full reload if no specific update provided
+      const loadCustomers = async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (!user) return
 
-        const businessId = await getCurrentBusinessId(supabase, user.email!)
+          const businessId = await getCurrentBusinessId(supabase, user.email!)
 
-        const { data: customersData, error: customersError } = await supabase
-          .from('customers')
-          .select(`
-            *,
-            loyalty_cards:customer_loyalty_cards (
+          const { data: customersData, error: customersError } = await supabase
+            .from('customers')
+            .select(`
               *,
-              loyalty_cards (
-                id,
-                name,
-                rules
+              loyalty_cards:customer_loyalty_cards (
+                *,
+                loyalty_cards (
+                  id,
+                  name,
+                  rules
+                )
               )
-            )
-          `)
-          .eq('business_id', businessId)
-          .order('enrollment_date', { ascending: false })
+            `)
+            .eq('business_id', businessId)
+            .order('enrollment_date', { ascending: false })
 
-        if (customersError) {
-          console.error('Error reloading customers:', customersError)
-          return
+          if (customersError) {
+            console.error('Error reloading customers:', customersError)
+            return
+          }
+
+          setCustomers(customersData || [])
+        } catch (err) {
+          console.error('Error reloading customers:', err)
         }
-
-        setCustomers(customersData || [])
-      } catch (err) {
-        console.error('Error reloading customers:', err)
       }
-    }
 
-    loadCustomers()
+      loadCustomers()
+    }
   }
 
   if (loading) {
