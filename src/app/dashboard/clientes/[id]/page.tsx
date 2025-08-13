@@ -7,9 +7,10 @@ import { getCurrentBusinessId } from '@/lib/business'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Gift, Edit, Trash2, Calendar, Phone, Mail, Shield, ShieldCheck, Activity, Star, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Gift, Edit, Trash2, Calendar, Phone, Mail, Shield, ShieldCheck, Activity, Star, CheckCircle, Smartphone, RefreshCw, Download } from 'lucide-react'
 import Link from "next/link"
 import GiveStampDialog from '../_components/GiveStampDialog'
+import WalletIntegration from '@/components/wallet-integration'
 
 interface CustomerDetail {
   id: string
@@ -49,10 +50,13 @@ interface CustomerLoyaltyCardDetail {
   status: string
   qr_code: string
   wallet_pass_url?: string
+  google_pay_url?: string
+  passkit_id?: string
   created_at: string
   loyalty_cards: {
     id: string
     name: string
+    wallet_enabled: boolean
     rules: {
       stamps_required: number
       reward_description: string
@@ -100,11 +104,14 @@ export default function CustomerDetailPage() {
               status,
               qr_code,
               wallet_pass_url,
+              google_pay_url,
+              passkit_id,
               created_at,
               loyalty_cards (
                 id,
                 name,
-                rules
+                rules,
+                wallet_enabled
               )
             )
           `)
@@ -155,11 +162,14 @@ export default function CustomerDetailPage() {
             status,
             qr_code,
             wallet_pass_url,
+            google_pay_url,
+            passkit_id,
             created_at,
             loyalty_cards (
               id,
               name,
-              rules
+              rules,
+              wallet_enabled
             )
           )
         `)
@@ -553,12 +563,116 @@ export default function CustomerDetailPage() {
                       </p>
                     </div>
                     
-                    {card.wallet_pass_url && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={card.wallet_pass_url} target="_blank" rel="noopener noreferrer">
-                          Ver na Carteira
-                        </a>
-                      </Button>
+                    {/* Wallet Management Section */}
+                    {card.loyalty_cards.wallet_enabled && (
+                      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Smartphone className="w-4 h-4 text-gray-600" />
+                            <span className="text-sm font-medium text-gray-700">Carteira Digital</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {card.passkit_id ? (
+                              <Badge variant="default" className="text-xs bg-green-100 text-green-700">
+                                Ativo
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">
+                                Não Criado
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {card.passkit_id ? (
+                            <div className="flex flex-wrap gap-2">
+                              {card.wallet_pass_url && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => window.open(card.wallet_pass_url, '_blank')}
+                                  className="text-xs h-8"
+                                >
+                                  Apple Wallet
+                                </Button>
+                              )}
+                              {card.google_pay_url && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => window.open(card.google_pay_url, '_blank')}
+                                  className="text-xs h-8 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                >
+                                  Google Pay
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch('/api/passkit/update-pass', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        customerLoyaltyCardId: card.id,
+                                        newStampCount: card.current_stamps
+                                      })
+                                    })
+                                    if (response.ok) {
+                                      alert('Carteira digital atualizada com sucesso!')
+                                    } else {
+                                      throw new Error('Falha na atualização')
+                                    }
+                                  } catch (error) {
+                                    alert('Erro ao atualizar carteira digital')
+                                  }
+                                }}
+                                className="text-xs h-8 text-gray-600 hover:text-gray-800"
+                              >
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                                Atualizar
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <p className="text-xs text-gray-600">
+                                Este cliente ainda não possui uma carteira digital para este cartão.
+                              </p>
+                              <WalletIntegration
+                                customerId={customer.id}
+                                loyaltyCardId={card.loyalty_card_id}
+                                customerName={customer.name}
+                                loyaltyCardName={card.loyalty_cards.name}
+                                onSuccess={(walletData) => {
+                                  // Update the local state with wallet data
+                                  setCustomer(prev => {
+                                    if (!prev) return prev
+                                    return {
+                                      ...prev,
+                                      customer_loyalty_cards: prev.customer_loyalty_cards.map(c =>
+                                        c.id === card.id
+                                          ? {
+                                              ...c,
+                                              passkit_id: walletData.passkit_id,
+                                              wallet_pass_url: walletData.wallet_pass_url,
+                                              google_pay_url: walletData.google_pay_url
+                                            }
+                                          : c
+                                      )
+                                    }
+                                  })
+                                  alert('Carteira digital criada com sucesso!')
+                                }}
+                                onError={(error) => {
+                                  console.error('Wallet creation error:', error)
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>

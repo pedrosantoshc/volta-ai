@@ -289,6 +289,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Update PassKit wallet pass if enabled
+    try {
+      const { handleStampTransaction } = await import('@/lib/passkit-operations')
+      await handleStampTransaction(selectedCard.id, stamps)
+    } catch (passkitError) {
+      // Log PassKit error but don't fail the stamp transaction
+      console.warn('PassKit update failed, adding to retry queue:', passkitError)
+      
+      // Add to retry queue for automatic retry with exponential backoff
+      try {
+        const { addToRetryQueue } = await import('@/lib/passkit-retry-queue')
+        addToRetryQueue(selectedCard.id, stamps)
+      } catch (queueError) {
+        console.error('Failed to add PassKit update to retry queue:', queueError)
+      }
+    }
+
     // Return success response
     const response: AddStampsResponse = {
       ok: true,

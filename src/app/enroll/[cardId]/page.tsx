@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import Image from "next/image"
+import WalletIntegration from "@/components/wallet-integration"
 
 interface LoyaltyCard {
   id: string
@@ -69,6 +70,8 @@ export default function CustomerEnrollment() {
     customer_id: string
     customer_card_id: string
     wallet_pass_url?: string
+    google_pay_url?: string
+    qr_code?: string
   } | null>(null)
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -348,15 +351,25 @@ export default function CustomerEnrollment() {
                 </ul>
               </div>
               
+              {/* Wallet Integration */}
+              {enrollmentResult && loyaltyCard && (
+                <div className="mb-4">
+                  <WalletIntegration
+                    customerId={enrollmentResult.customer_id}
+                    loyaltyCardId={loyaltyCard.id}
+                    customerName={formData.name}
+                    loyaltyCardName={loyaltyCard.name}
+                    onSuccess={(walletData) => {
+                      console.log('✅ Wallet pass created successfully:', walletData)
+                    }}
+                    onError={(error) => {
+                      console.warn('⚠️ Wallet pass creation failed:', error)
+                    }}
+                  />
+                </div>
+              )}
+              
               <div className="text-center space-y-4">
-                {enrollmentResult?.wallet_pass_url && (
-                  <Button
-                    onClick={() => window.open(enrollmentResult.wallet_pass_url, '_blank')}
-                    className="w-full bg-black hover:bg-gray-800 text-white mb-3"
-                  >
-                    📱 Adicionar à Carteira
-                  </Button>
-                )}
                 <p className="text-sm text-gray-600 mb-4">
                   Mantenha seu telefone por perto para receber as notificações!
                 </p>

@@ -34,6 +34,7 @@ CREATE TABLE loyalty_cards (
     rules JSONB NOT NULL DEFAULT '{}',
     enrollment_form JSONB NOT NULL DEFAULT '{}',
     is_active BOOLEAN DEFAULT true,
+    wallet_enabled BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -63,6 +64,8 @@ CREATE TABLE customer_loyalty_cards (
     current_stamps INTEGER DEFAULT 0,
     total_redeemed INTEGER DEFAULT 0,
     wallet_pass_url TEXT,
+    google_pay_url TEXT,
+    passkit_id TEXT,
     qr_code TEXT NOT NULL,
     status card_status DEFAULT 'active',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -129,6 +132,8 @@ CREATE INDEX idx_customers_business ON customers(business_id);
 CREATE INDEX idx_customers_phone ON customers(business_id, phone);
 CREATE INDEX idx_customer_loyalty_cards_customer ON customer_loyalty_cards(customer_id);
 CREATE INDEX idx_customer_loyalty_cards_loyalty_card ON customer_loyalty_cards(loyalty_card_id);
+CREATE INDEX idx_customer_loyalty_cards_passkit_id ON customer_loyalty_cards(passkit_id) WHERE passkit_id IS NOT NULL;
+CREATE INDEX idx_loyalty_cards_wallet_enabled ON loyalty_cards(wallet_enabled) WHERE wallet_enabled = true;
 CREATE INDEX idx_campaigns_business ON campaigns(business_id);
 CREATE INDEX idx_ai_insights_business ON ai_insights(business_id);
 CREATE INDEX idx_stamp_transactions_card ON stamp_transactions(customer_loyalty_card_id);

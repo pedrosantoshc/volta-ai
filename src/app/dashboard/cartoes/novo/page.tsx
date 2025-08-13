@@ -20,7 +20,8 @@ export default function NovoCartao() {
     footer_text: '',
     background_color: '#7c3aed',
     stamp_icon: 'coffee',
-    stamp_icon_type: 'emoji' // 'emoji' or 'custom'
+    stamp_icon_type: 'emoji', // 'emoji' or 'custom'
+    wallet_enabled: true // Enable wallet integration by default
   })
   const [stampIconFile, setStampIconFile] = useState<File | null>(null)
   const [stampIconPreview, setStampIconPreview] = useState<string | null>(null)
@@ -191,10 +192,11 @@ export default function NovoCartao() {
           require_email: true,
           require_phone: true
         },
-        is_active: true
+        is_active: true,
+        wallet_enabled: formData.wallet_enabled
       }
 
-      const { error } = await supabase
+      const { data: newCard, error } = await supabase
         .from('loyalty_cards')
         .insert(loyaltyCardData)
         .select()
@@ -203,6 +205,32 @@ export default function NovoCartao() {
       if (error) {
         setError(error.message)
       } else {
+        // Create PassKit template if wallet integration is enabled
+        if (formData.wallet_enabled && newCard) {
+          try {
+            const templateResponse = await fetch('/api/passkit/templates', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                loyaltyCardId: newCard.id,
+                action: 'create'
+              })
+            })
+            
+            if (!templateResponse.ok) {
+              console.warn('PassKit template creation failed, but loyalty card was created successfully')
+              // Don't fail the entire process if template creation fails
+            } else {
+              console.log('✅ PassKit template created for new loyalty card')
+            }
+          } catch (templateError) {
+            console.warn('PassKit template creation error:', templateError)
+            // Don't fail the entire process if template creation fails
+          }
+        }
+        
         router.push('/dashboard/cartoes')
       }
     } catch {
