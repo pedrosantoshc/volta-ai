@@ -156,7 +156,7 @@ export async function updateTemplate(
     const sdk = await getPassKitSDK()
     
     // For mock SDK, just log the update
-    if (sdk.Members?.updateMember) {
+    if (sdk?.Members?.updateMember) {
       console.log('📄 Updating PassKit template:', templateId, template.name)
       return
     }
