@@ -25,14 +25,6 @@ export interface PassKitTemplate {
       label: string
       value: string
     }
-    reward?: {
-      label: string
-      value: string
-    }
-    expires?: {
-      label: string
-      value: string
-    }
     [key: string]: {
       label: string
       value: string
@@ -140,7 +132,7 @@ export async function createTemplate(request: CreateTemplateRequest): Promise<st
     const sdk = await getPassKitSDK()
     
     // For mock SDK, return a mock template ID
-    if (sdk.Members?.createMember) {
+    if (sdk?.Members?.createMember) {
       console.log('📄 Creating PassKit template:', template.name)
       return `template-${request.loyaltyCardId}`
     }

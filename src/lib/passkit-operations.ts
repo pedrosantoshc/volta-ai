@@ -3,8 +3,7 @@ import { createClient } from './supabase-server'
 import { 
   generatePrivacyCompliantPassData, 
   createPrivacyAuditEntry, 
-  validateLGPDCompliance,
-  anonymizePersonalData 
+  validateLGPDCompliance
 } from './privacy-utils'
 
 // Customer and loyalty card data interfaces
@@ -68,6 +67,9 @@ export async function createLoyaltyPass(
 
   return safePassKitOperation(async () => {
     const sdk = await getPassKitSDK()
+    if (!sdk) {
+      throw new Error('PassKit SDK not available')
+    }
     const response = await sdk.Members.createMember(passData)
     
     // Log with anonymized data for privacy compliance
@@ -91,7 +93,12 @@ export async function createLoyaltyPass(
       ['Dados minimizados enviados para PassKit', 'External ID não-identificável usado']
     )
     
-    console.log('🔍 Privacy audit entry created:', anonymizePersonalData(auditEntry))
+    console.log('🔍 Privacy audit entry created:', {
+      timestamp: auditEntry.timestamp,
+      action: auditEntry.action,
+      customerId: auditEntry.customerId,
+      performedBy: auditEntry.performedBy
+    })
     
     return response
   }, 'pass creation')
@@ -125,6 +132,9 @@ export async function updatePassStamps(
 
   return safePassKitOperation(async () => {
     const sdk = await getPassKitSDK()
+    if (!sdk) {
+      throw new Error('PassKit SDK not available')
+    }
     await sdk.Members.updateMember(updateData)
     
     console.log('✅ Updated PassKit pass stamps:', {
@@ -140,6 +150,9 @@ export async function updatePassStamps(
 export async function deletePass(passkitId: string): Promise<void> {
   return safePassKitOperation(async () => {
     const sdk = await getPassKitSDK()
+    if (!sdk) {
+      throw new Error('PassKit SDK not available')
+    }
     await sdk.Members.deleteMember(passkitId)
     
     console.log('✅ Deleted PassKit pass:', { passId: passkitId })
@@ -351,7 +364,7 @@ export async function handleStampTransaction(
 export async function bulkUpdatePasses(
   customerLoyaltyCardIds: string[],
   updateType: 'stamps' | 'message',
-  updateData: { stampsToAdd?: number }
+  updateData: { stampsToAdd: number }
 ): Promise<{ success: string[], errors: { id: string, error: string }[] }> {
   const results = {
     success: [] as string[],
