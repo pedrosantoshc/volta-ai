@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2, Smartphone, Download, QrCode, CheckCircle, AlertCircle } from 'lucide-react'
@@ -51,7 +51,7 @@ function supportsWallet(): boolean {
 export default function WalletIntegration({
   customerId,
   loyaltyCardId,
-  customerName,
+  customerName: _customerName,
   loyaltyCardName,
   onSuccess,
   onError

@@ -1,12 +1,11 @@
 import * as fs from 'fs'
-import * as path from 'path'
 
 // PassKit Error Classes
 export class PassKitError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: any
+    public details?: Record<string, unknown>
   ) {
     super(message)
     this.name = 'PassKitError'
@@ -121,7 +120,7 @@ export function certificatesExist(): boolean {
 }
 
 // Initialize PassKit SDK
-let passkitSDK: any = null
+let passkitSDK: typeof mockPassKitSDK | null = null
 
 export async function getPassKitSDK() {
   if (passkitSDK) {
@@ -139,7 +138,8 @@ export async function getPassKitSDK() {
 
   try {
     // Import the real PassKit SDK
-    const PassKitSDK = require('passkit-typescript-sdk')
+    const PassKitSDKModule = await import('passkit-typescript-sdk')
+    const PassKitSDK = PassKitSDKModule.PassKitSDK || PassKitSDKModule.default
     
     passkitSDK = new PassKitSDK({
       endpoint: config.endpoint,
@@ -165,29 +165,31 @@ export async function safePassKitOperation<T>(
 ): Promise<T> {
   try {
     return await operation()
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`PassKit ${operationName} error:`, error)
     
-    if (error.code === 'GRPC_ERROR') {
+    const errorObj = error as Record<string, unknown>
+    
+    if (errorObj.code === 'GRPC_ERROR') {
       throw new PassKitError(
         `PassKit service unavailable for ${operationName}`,
         'SERVICE_UNAVAILABLE',
-        error.details
+        errorObj.details as Record<string, unknown>
       )
     }
     
-    if (error.code === 'INVALID_ARGUMENT') {
+    if (errorObj.code === 'INVALID_ARGUMENT') {
       throw new PassKitError(
         `Invalid data provided for ${operationName}`,
         'INVALID_ARGUMENT',
-        error.details
+        errorObj.details as Record<string, unknown>
       )
     }
     
     throw new PassKitError(
       `PassKit ${operationName} failed`,
       'OPERATION_FAILED',
-      error
+      errorObj
     )
   }
 }

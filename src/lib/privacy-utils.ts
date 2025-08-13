@@ -35,7 +35,7 @@ export function encryptSensitiveData(data: string): string {
     let encrypted = cipher.update(data, 'utf8', 'hex')
     encrypted += cipher.final('hex')
     return encrypted
-  } catch (error) {
+  } catch {
     throw new PrivacyError('Failed to encrypt sensitive data', 'ENCRYPTION_ERROR')
   }
 }
@@ -47,7 +47,7 @@ export function decryptSensitiveData(encryptedData: string): string {
     let decrypted = decipher.update(encryptedData, 'hex', 'utf8')
     decrypted += decipher.final('utf8')
     return decrypted
-  } catch (error) {
+  } catch {
     throw new PrivacyError('Failed to decrypt sensitive data', 'DECRYPTION_ERROR')
   }
 }
@@ -57,8 +57,8 @@ export function anonymizePersonalData(data: {
   name?: string
   email?: string
   phone?: string
-  [key: string]: any
-}): any {
+  [key: string]: string | number | boolean | null | undefined
+}): Record<string, string | number | boolean | null | undefined> {
   const anonymized = { ...data }
   
   if (anonymized.name) {
@@ -83,7 +83,7 @@ export function minimizeDataForPassKit(customerData: {
   name: string
   email?: string
   phone: string
-  [key: string]: any
+  [key: string]: string | number | boolean | null | undefined
 }): {
   externalId: string
   displayName: string
@@ -222,7 +222,7 @@ export interface PrivacyAuditEntry {
   action: 'data_export' | 'data_deletion' | 'data_anonymization' | 'consent_updated'
   customerId: string // This should be anonymized in logs
   performedBy: string
-  details: any
+  details: Record<string, string | number | boolean | null | undefined>
   complianceNotes: string[]
 }
 
@@ -230,7 +230,7 @@ export function createPrivacyAuditEntry(
   action: PrivacyAuditEntry['action'],
   customerId: string,
   performedBy: string,
-  details: any,
+  details: Record<string, string | number | boolean | null | undefined>,
   complianceNotes: string[] = []
 ): PrivacyAuditEntry {
   return {

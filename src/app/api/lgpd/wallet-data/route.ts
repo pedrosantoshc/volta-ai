@@ -192,8 +192,19 @@ export async function POST(request: NextRequest) {
       case 'export':
         // Export all wallet-related data for the customer
         const walletPasses = customer.customer_loyalty_cards
-          .filter((card: any) => card.passkit_id || card.wallet_pass_url)
-          .map((card: any) => ({
+          .filter((card: { passkit_id?: string; wallet_pass_url?: string }) => card.passkit_id || card.wallet_pass_url)
+          .map((card: { 
+            id: string
+            loyalty_cards: { name: string }
+            passkit_id?: string
+            wallet_pass_url?: string
+            google_pay_url?: string
+            current_stamps: number
+            total_redeemed: number
+            status: string
+            created_at: string
+            updated_at: string
+          }) => ({
             id: card.id,
             loyalty_card_name: card.loyalty_cards.name,
             passkit_id: card.passkit_id,
@@ -217,9 +228,9 @@ export async function POST(request: NextRequest) {
           walletPasses,
           passkitData: {
             totalPasses: walletPasses.length,
-            activePasses: walletPasses.filter(pass => pass.status === 'active').length,
+            activePasses: walletPasses.filter((pass: { status: string }) => pass.status === 'active').length,
             lastActivity: walletPasses.length > 0 
-              ? Math.max(...walletPasses.map(pass => new Date(pass.created_at).getTime()))
+              ? Math.max(...walletPasses.map((pass: { created_at: string }) => new Date(pass.created_at).getTime()))
                   .toString()
               : undefined
           },

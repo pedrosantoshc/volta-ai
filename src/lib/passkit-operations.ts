@@ -36,13 +36,14 @@ export interface CustomerLoyaltyCardData {
   passkit_id?: string
   wallet_pass_url?: string
   google_pay_url?: string
+  qr_code?: string
 }
 
 // Create a new loyalty pass for a customer
 export async function createLoyaltyPass(
   customer: CustomerData,
   loyaltyCard: LoyaltyCardData,
-  customerLoyaltyCardId: string
+  _customerLoyaltyCardId: string
 ): Promise<PassResponse> {
   // Generate privacy-compliant pass data
   const privacyCompliantData = generatePrivacyCompliantPassData(
@@ -212,7 +213,7 @@ export async function createCustomerLoyaltyPass(
     }
 
     // Check if customer already has this loyalty card
-    const { data: existingCard, error: existingCardError } = await supabase
+    const { data: existingCard } = await supabase
       .from('customer_loyalty_cards')
       .select('id, passkit_id, wallet_pass_url, google_pay_url')
       .eq('customer_id', customerId)
@@ -350,7 +351,7 @@ export async function handleStampTransaction(
 export async function bulkUpdatePasses(
   customerLoyaltyCardIds: string[],
   updateType: 'stamps' | 'message',
-  updateData: any
+  updateData: { stampsToAdd?: number }
 ): Promise<{ success: string[], errors: { id: string, error: string }[] }> {
   const results = {
     success: [] as string[],
