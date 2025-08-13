@@ -231,7 +231,7 @@ export async function listTemplates(businessId: string): Promise<PassKitTemplate
     const sdk = await getPassKitSDK()
     
     // For mock SDK, return empty array
-    if (sdk.Members?.createMember) {
+    if (sdk?.Members?.createMember) {
       console.log('📄 Listing PassKit templates for business:', businessId)
       return []
     }
