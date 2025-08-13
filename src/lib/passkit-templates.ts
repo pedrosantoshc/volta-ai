@@ -174,7 +174,7 @@ export async function deleteTemplate(templateId: string): Promise<void> {
     const sdk = await getPassKitSDK()
     
     // For mock SDK, just log the deletion
-    if (sdk.Members?.deleteMember) {
+    if (sdk?.Members?.deleteMember) {
       console.log('📄 Deleting PassKit template:', templateId)
       return
     }
