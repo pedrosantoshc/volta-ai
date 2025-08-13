@@ -192,7 +192,7 @@ export async function getTemplate(templateId: string): Promise<PassKitTemplate |
     const sdk = await getPassKitSDK()
     
     // For mock SDK, return a mock template
-    if (sdk.Members?.createMember) {
+    if (sdk?.Members?.createMember) {
       console.log('📄 Getting PassKit template:', templateId)
       return {
         id: templateId,
