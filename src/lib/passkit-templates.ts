@@ -132,7 +132,7 @@ export async function createTemplate(request: CreateTemplateRequest): Promise<st
     const sdk = await getPassKitSDK()
     
     // For mock SDK, return a mock template ID
-    if (sdk?.Members?.createMember) {
+    if (sdk && sdk.Members && typeof sdk.Members.createMember === 'function') {
       console.log('📄 Creating PassKit template:', template.name)
       return `template-${request.loyaltyCardId}`
     }
@@ -156,7 +156,7 @@ export async function updateTemplate(
     const sdk = await getPassKitSDK()
     
     // For mock SDK, just log the update
-    if (sdk?.Members?.updateMember) {
+    if (sdk && sdk.Members && typeof sdk.Members.updateMember === 'function') {
       console.log('📄 Updating PassKit template:', templateId, template.name)
       return
     }
@@ -174,7 +174,7 @@ export async function deleteTemplate(templateId: string): Promise<void> {
     const sdk = await getPassKitSDK()
     
     // For mock SDK, just log the deletion
-    if (sdk?.Members?.deleteMember) {
+    if (sdk && sdk.Members && typeof sdk.Members.deleteMember === 'function') {
       console.log('📄 Deleting PassKit template:', templateId)
       return
     }
@@ -192,7 +192,7 @@ export async function getTemplate(templateId: string): Promise<PassKitTemplate |
     const sdk = await getPassKitSDK()
     
     // For mock SDK, return a mock template
-    if (sdk?.Members?.createMember) {
+    if (sdk && sdk.Members && typeof sdk.Members.createMember === 'function') {
       console.log('📄 Getting PassKit template:', templateId)
       return {
         id: templateId,
@@ -231,7 +231,7 @@ export async function listTemplates(businessId: string): Promise<PassKitTemplate
     const sdk = await getPassKitSDK()
     
     // For mock SDK, return empty array
-    if (sdk?.Members?.createMember) {
+    if (sdk && sdk.Members && typeof sdk.Members.createMember === 'function') {
       console.log('📄 Listing PassKit templates for business:', businessId)
       return []
     }

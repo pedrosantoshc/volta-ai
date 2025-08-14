@@ -127,35 +127,17 @@ export async function getPassKitSDK() {
     return passkitSDK
   }
 
-  const config = getPassKitConfig()
+  // Always use mock SDK for now until proper PassKit SDK is configured
+  // The passkit-typescript-sdk requires proper gRPC configuration and certificates
+  console.log('🧪 Using Mock PassKit SDK (Real SDK integration pending)')
+  passkitSDK = mockPassKitSDK
+  return passkitSDK
 
-  // Use mock SDK in development or when certificates don't exist
-  if (process.env.NODE_ENV === 'development' || !config.enabled || !certificatesExist()) {
-    console.log('🧪 Using Mock PassKit SDK')
-    passkitSDK = mockPassKitSDK
-    return passkitSDK
-  }
-
-  try {
-    // Import the real PassKit SDK
-    const PassKitSDKModule = await import('passkit-typescript-sdk')
-    const PassKitSDK = PassKitSDKModule.PassKitSDK || PassKitSDKModule.default
-    
-    passkitSDK = new PassKitSDK({
-      endpoint: config.endpoint,
-      ca_certificate: fs.readFileSync(config.ca_certificate),
-      certificate: fs.readFileSync(config.certificate),
-      private_key: fs.readFileSync(config.private_key)
-    })
-
-    console.log('✅ PassKit SDK initialized successfully')
-    return passkitSDK
-  } catch (error) {
-    console.error('❌ Failed to initialize PassKit SDK:', error)
-    console.log('🧪 Falling back to Mock PassKit SDK')
-    passkitSDK = mockPassKitSDK
-    return passkitSDK
-  }
+  // TODO: Implement real PassKit SDK integration
+  // This requires:
+  // 1. Proper gRPC configuration
+  // 2. Valid PassKit certificates
+  // 3. Correct SDK initialization
 }
 
 // Safe PassKit operation wrapper
